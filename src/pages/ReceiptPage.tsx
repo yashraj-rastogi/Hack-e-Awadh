@@ -9,8 +9,11 @@ import {
   LayoutDashboard,
   MessageSquare,
   Download,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { getReceipt, submitCustomerFeedback } from '../services/db';
+import { sendWhatsAppReceipt } from '../services/whatsappService';
 
 export const ReceiptPage: React.FC = () => {
   const { storeId = 'store-awadh-01', receiptId = '' } = useParams<{
@@ -22,7 +25,10 @@ export const ReceiptPage: React.FC = () => {
 
   const [phone, setPhone] = useState('');
   const [whatsappOptIn, setWhatsappOptIn] = useState(false);
-  const [whatsappSent, setWhatsappSent] = useState(false);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [whatsappSuccess, setWhatsappSuccess] = useState(false);
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
+  const [needsSandboxNotice, setNeedsSandboxNotice] = useState(false);
 
   const [rating, setRating] = useState<'great' | 'okay' | 'problem' | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
@@ -50,10 +56,31 @@ export const ReceiptPage: React.FC = () => {
     timeStyle: 'short',
   });
 
-  const handleSendWhatsApp = (e: React.FormEvent) => {
+  const handleSendWhatsApp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.trim()) return;
-    setWhatsappSent(true);
+
+    setWhatsappLoading(true);
+    setWhatsappError(null);
+    setNeedsSandboxNotice(false);
+
+    try {
+      const result = await sendWhatsAppReceipt(receipt, phone);
+      setWhatsappLoading(false);
+
+      if (result.success) {
+        setWhatsappSuccess(true);
+      } else {
+        setWhatsappError(result.error || 'Could not send WhatsApp message.');
+        if (result.needsSandboxJoin) {
+          setNeedsSandboxNotice(true);
+        }
+      }
+    } catch (err: unknown) {
+      setWhatsappLoading(false);
+      const msg = err instanceof Error ? err.message : 'Error sending WhatsApp';
+      setWhatsappError(msg);
+    }
   };
 
   const handleFeedbackSubmit = (e: React.FormEvent) => {
@@ -130,23 +157,28 @@ export const ReceiptPage: React.FC = () => {
           </button>
         </div>
 
-        {/* WhatsApp Receipt Card (Section 22) */}
+        {/* Live Twilio WhatsApp Receipt Card (Section 22) */}
         <div className="paytm-card p-4 bg-white">
-          <div className="flex items-center gap-2 mb-2">
-            <Smartphone className="w-4 h-4 text-[#21C17A]" />
-            <h3 className="text-xs font-bold text-[#002E6E]">Send Receipt to WhatsApp</h3>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-[#21C17A]" />
+              <h3 className="text-xs font-bold text-[#002E6E]">Twilio WhatsApp Delivery</h3>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-[#21C17A] border border-emerald-100">
+              API Active
+            </span>
           </div>
 
-          {whatsappSent ? (
+          {whatsappSuccess ? (
             <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100 text-xs text-[#21C17A] font-semibold flex items-center gap-2">
               <Check className="w-4 h-4 text-[#21C17A] shrink-0" />
-              <span>Digital receipt sent to WhatsApp (+91 {phone})!</span>
+              <span>Digital bill delivered to WhatsApp (+91 {phone}) via Twilio!</span>
             </div>
           ) : (
             <form onSubmit={handleSendWhatsApp} className="space-y-2.5">
               <input
                 type="tel"
-                placeholder="+91 Mobile Number..."
+                placeholder="10-digit WhatsApp Number (e.g. 9876543210)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] placeholder-[#6B7A90] focus:outline-none focus:border-[#00BAF2] transition"
@@ -159,14 +191,33 @@ export const ReceiptPage: React.FC = () => {
                   className="rounded text-[#00BAF2] focus:ring-0 w-3.5 h-3.5"
                   required
                 />
-                <span>I agree to receive my digital receipt link on WhatsApp.</span>
+                <span>Send my itemized digital bill link to WhatsApp</span>
               </label>
+
+              {whatsappError && (
+                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-100 text-[11px] text-[#FD5C63]">
+                  <p className="font-semibold">{whatsappError}</p>
+                  {needsSandboxNotice && (
+                    <p className="mt-1 text-slate-600">
+                      <strong>Twilio Sandbox Tip:</strong> First send your sandbox keyword to <code>+1 415 523 8886</code> from WhatsApp to join.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={!whatsappOptIn || !phone}
-                className="w-full h-9 rounded-lg bg-[#00BAF2] hover:bg-[#00a4d6] disabled:opacity-50 text-white font-bold text-xs transition"
+                disabled={!whatsappOptIn || !phone || whatsappLoading}
+                className="w-full h-9 rounded-lg bg-[#00BAF2] hover:bg-[#00a4d6] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition"
               >
-                Send WhatsApp Bill
+                {whatsappLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Sending WhatsApp message...</span>
+                  </>
+                ) : (
+                  <span>Send Real WhatsApp Bill</span>
+                )}
               </button>
             </form>
           )}

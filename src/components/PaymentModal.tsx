@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CartItem } from '../types';
 import { finalizeCheckout } from '../services/db';
+import { processPaytmTransaction, getPaytmDetails } from '../services/paytmService';
 import { soundFX } from '../utils/audio';
 import { ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, X, CreditCard, Lock, Smartphone } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -24,41 +25,56 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [simulateFailure, setSimulateFailure] = useState(false);
 
+  const paytmInfo = getPaytmDetails();
+
   if (!isOpen) return null;
 
   const totalPaise = cartItems.reduce((acc, curr) => acc + curr.unitPricePaise * curr.quantity, 0);
   const totalRupees = (totalPaise / 100).toFixed(2);
 
-  const handlePayNow = () => {
+  const handlePayNow = async () => {
     setStep('processing');
     setErrorMessage(null);
 
-    // Simulate Paytm test state machine transition
-    setTimeout(() => {
+    try {
       if (simulateFailure) {
-        setStep('failed');
-        setErrorMessage('Paytm Payment Simulator: Bank authorization timed out. Your cart is preserved.');
+        setTimeout(() => {
+          setStep('failed');
+          setErrorMessage('Paytm Payment Simulator: Bank authorization declined. Your cart is preserved.');
+        }, 1200);
         return;
       }
 
-      const res = finalizeCheckout(storeId, cartItems);
-      if (res.success && res.receipt) {
-        setStep('success');
-        soundFX.playSuccessChime();
-        confetti({
-          particleCount: 70,
-          spread: 60,
-          origin: { y: 0.6 },
-        });
+      // Execute Paytm transaction process
+      const paytmResult = await processPaytmTransaction(totalPaise);
 
-        setTimeout(() => {
-          onPaymentSuccess(res.receipt!.id);
-        }, 1400);
+      if (paytmResult.success) {
+        const res = finalizeCheckout(storeId, cartItems);
+        if (res.success && res.receipt) {
+          setStep('success');
+          soundFX.playSuccessChime();
+          confetti({
+            particleCount: 75,
+            spread: 60,
+            origin: { y: 0.6 },
+          });
+
+          setTimeout(() => {
+            onPaymentSuccess(res.receipt!.id);
+          }, 1400);
+        } else {
+          setStep('failed');
+          setErrorMessage(res.error || 'Inventory conflict or transaction finalization error.');
+        }
       } else {
         setStep('failed');
-        setErrorMessage(res.error || 'Payment verification conflict. Please retry.');
+        setErrorMessage(paytmResult.error || 'Paytm gateway communication error.');
       }
-    }, 1500);
+    } catch (err: unknown) {
+      setStep('failed');
+      const msg = err instanceof Error ? err.message : 'Payment error';
+      setErrorMessage(msg);
+    }
   };
 
   const handleRetry = () => {
@@ -90,16 +106,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[#002E6E]">Paytm Payment Gateway</h3>
-                  <p className="text-[11px] text-[#6B7A90]">Awadh Mart (Hazratganj)</p>
+                  <p className="text-[11px] text-[#6B7A90]">MID: {paytmInfo.mid}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 text-[11px] font-semibold text-[#21C17A] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                 <Lock className="w-3 h-3" />
-                <span>Secure</span>
+                <span>Verified</span>
               </div>
             </div>
 
-            {/* What am I paying? (Section 19: Large bold navy amount) */}
+            {/* Total Amount to Pay */}
             <div className="bg-[#F5F7FA] border border-[#E0E6ED] rounded-xl p-4 mb-4 text-center">
               <span className="text-xs font-semibold text-[#6B7A90] uppercase tracking-wider block">
                 Total Amount To Pay
@@ -121,16 +137,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   </div>
                   <div>
                     <p className="text-xs font-bold text-[#002E6E]">Paytm Test UPI / Sandbox</p>
-                    <p className="text-[11px] text-[#6B7A90]">Instant test state machine authorization</p>
+                    <p className="text-[11px] text-[#6B7A90]">Merchant MID: {paytmInfo.mid}</p>
                   </div>
                 </div>
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-sky-100 text-[#002E6E]">
-                  Active
+                  Ready
                 </span>
               </div>
             </div>
 
-            {/* Judge Failure Simulation Checkbox */}
+            {/* QA Test Simulation Checkbox */}
             <div className="p-2.5 rounded-lg bg-[#F5F7FA] border border-[#E0E6ED] mb-5 flex items-center justify-between">
               <span className="text-[11px] font-medium text-[#6B7A90]">Simulate payment decline (QA test)</span>
               <input
@@ -151,7 +167,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
             <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-[#6B7A90]">
               <ShieldCheck className="w-3.5 h-3.5 text-[#21C17A]" />
-              <span>100% Synthetic Demo Sandbox · No real charges</span>
+              <span>Paytm Developer Staging · Zero Risk Test Mode</span>
             </div>
           </div>
         )}
@@ -163,9 +179,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <div className="absolute inset-0 rounded-full border-3 border-[#00BAF2] border-t-transparent animate-spin" />
               <CreditCard className="w-7 h-7 text-[#002E6E]" />
             </div>
-            <h3 className="text-base font-bold text-[#002E6E] mb-1">Awaiting Payment Verification...</h3>
+            <h3 className="text-base font-bold text-[#002E6E] mb-1">Awaiting Paytm Authorization...</h3>
             <p className="text-xs text-[#6B7A90] max-w-xs mb-3">
-              Processing Paytm test payment of ₹{totalRupees} and writing verified transaction state.
+              Verifying transaction with Paytm Test Gateway (MID: {paytmInfo.mid}).
             </p>
             <span className="text-[11px] font-semibold text-[#00BAF2] bg-sky-50 px-3 py-1 rounded-full border border-sky-100">
               State: AwaitingPayment → Verified
