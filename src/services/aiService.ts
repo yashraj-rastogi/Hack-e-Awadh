@@ -140,7 +140,7 @@ export async function parseVoiceCommand(
 Available products: Pepsi, Maggi, KitKat, Thums Up, Lay's, Amul Milk, Parle-G, Britannia Good Day, Red Bull, Kurkure, Nescafe, Tata Salt, Cadbury Dairy Milk, Haldiram's Bhujia, Fortune Oil.
 Return JSON ONLY matching:
 {
-  "intent": "add_item" | "remove_item" | "remove_last" | "get_total" | "clear_cart" | "start_payment" | "unknown",
+  "intent": "add_item" | "remove_item" | "remove_last" | "get_total" | "clear_cart" | "start_payment" | "check_stock" | "product_info" | "voice_feedback" | "unknown",
   "productQuery": string | null,
   "quantity": number,
   "requiresConfirmation": boolean,
@@ -177,6 +177,52 @@ User said: "${utterance}"`,
 
 function parseVoiceCommandLocal(clean: string): VoiceIntentResult {
   const isHindi = /[\u0900-\u097F]/.test(clean);
+
+  // Check for Real-time Voice Feedback
+  if (
+    clean.includes('accha') ||
+    clean.includes('acha') ||
+    clean.includes('badhiya') ||
+    clean.includes('bohot fast') ||
+    clean.includes('very fast') ||
+    clean.includes('great') ||
+    clean.includes('awesome') ||
+    clean.includes('pasand aya') ||
+    clean.includes('मज़ा आया') ||
+    clean.includes('बहुत बढ़िया') ||
+    clean.includes('अच्छा लगा') ||
+    clean.includes('तेज़ था') ||
+    clean.includes('शानदार')
+  ) {
+    return {
+      intent: 'voice_feedback',
+      productQuery: null,
+      quantity: 5,
+      requiresConfirmation: false,
+      reply: isHindi
+        ? 'आपके शानदार फीडबैक के लिए बहुत-बहुत धन्यवाद! हमें खुशी है कि आपको अनुभव पसंद आया।'
+        : 'Thank you for your wonderful feedback! We are glad you enjoyed the fast checkout.',
+    };
+  }
+
+  if (
+    clean.includes('slow') ||
+    clean.includes('problem') ||
+    clean.includes('kharab') ||
+    clean.includes('dikkat') ||
+    clean.includes('दिक्कत') ||
+    clean.includes('खराब')
+  ) {
+    return {
+      intent: 'voice_feedback',
+      productQuery: null,
+      quantity: 1,
+      requiresConfirmation: false,
+      reply: isHindi
+        ? 'असुविधा के लिए खेद है। आपका फीडबैक स्टोर मैनेजर को दर्ज कर दिया गया है।'
+        : 'We apologize for the inconvenience. Your feedback has been noted for store improvement.',
+    };
+  }
 
   // Check for Payment Intent (strict word boundaries / explicit phrases to avoid matching "पे" in "पेप्सी")
   const isPayment =
@@ -251,6 +297,24 @@ function parseVoiceCommandLocal(clean: string): VoiceIntentResult {
 
   const quantity = extractQuantity(clean);
 
+  // Check for Inquiry/Price/Stock Questions
+  const isStockOrPriceQuery =
+    clean.includes('price') ||
+    clean.includes('kitne ka') ||
+    clean.includes('kitna ka') ||
+    clean.includes('rate') ||
+    clean.includes('stock') ||
+    clean.includes('available') ||
+    clean.includes('hai kya') ||
+    clean.includes('milega') ||
+    clean.includes('batao') ||
+    clean.includes('रुपये') ||
+    clean.includes('कीमत') ||
+    clean.includes('स्टॉक') ||
+    clean.includes('उपलब्ध') ||
+    clean.includes('मिलेगा') ||
+    clean.includes('है क्या');
+
   // Check for Remove Intent
   const isRemove =
     clean.includes('remove') ||
@@ -280,6 +344,17 @@ function parseVoiceCommandLocal(clean: string): VoiceIntentResult {
   }
 
   if (matchedProduct) {
+    if (isStockOrPriceQuery && !isRemove) {
+      return {
+        intent: 'product_info',
+        productQuery: matchedProduct.name,
+        quantity: 1,
+        requiresConfirmation: false,
+        reply: isHindi
+          ? `${matchedProduct.name} स्टोर में उपलब्ध है। क्या आप इसे कार्ट में जोड़ना चाहते हैं?`
+          : `${matchedProduct.name} is in stock. Would you like to add it to your cart?`,
+      };
+    }
     if (isRemove) {
       return {
         intent: 'remove_item',

@@ -5,19 +5,69 @@ export interface User {
   role: UserRole;
   displayName: string;
   phone?: string;
+  email?: string;
+  address?: string;
   createdAt: number;
+}
+
+export interface CustomerUser {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  isGuest: boolean;
+  createdAt: number;
+}
+
+export interface ShoppingListItem {
+  id: string;
+  name: string;
+  quantity: number;
+  completed: boolean;
+  estimatedPaise?: number;
+  productId?: string;
+}
+
+export interface ShoppingList {
+  id: string;
+  customerId: string;
+  title: string;
+  items: ShoppingListItem[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MerchantBankingDetails {
+  accountHolderName: string;
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  upiVpa: string;
+  settlementSchedule: 'instant' | 't_plus_1' | 'end_of_day';
+  gstin?: string;
+}
+
+export interface PaymentSimulatorConfig {
+  mode: 'instant_success' | 'otp_challenge' | 'simulate_failure';
+  paytmMid: string;
+  simulatedNetworkDelayMs: number;
+  sendWebhookNotification: boolean;
 }
 
 export interface Store {
   id: string;
   ownerId: string;
   name: string;
-  category: 'grocery' | 'general-store';
+  category: 'grocery' | 'general-store' | 'supermarket' | 'fmcg' | 'kirana';
   location: string;
   supportedLanguages: ('en' | 'hi' | 'hinglish')[];
   qrSlug: string;
-  isDemoData: true;
+  isDemoData: boolean;
   createdAt: number;
+  ownerEmail?: string;
+  ownerPhone?: string;
+  bankingDetails?: MerchantBankingDetails;
 }
 
 export interface Product {
@@ -147,6 +197,9 @@ export type VoiceAction =
   | 'get_total'
   | 'clear_cart'
   | 'start_payment'
+  | 'check_stock'
+  | 'product_info'
+  | 'voice_feedback'
   | 'unknown';
 
 export interface VoiceIntentResult {

@@ -49,6 +49,13 @@ export const Navbar: React.FC = () => {
             </Link>
 
             <Link
+              to="/customer"
+              className="px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-medium text-blue-200 hover:text-white transition"
+            >
+              Customer Hub
+            </Link>
+
+            <Link
               to="/s/store-awadh-01/checkout"
               className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-[#00BAF2] hover:bg-[#00a4d6] text-white transition flex items-center gap-1.5 shadow-sm"
             >
@@ -105,6 +112,17 @@ export const Navbar: React.FC = () => {
             }`}
           >
             Overview
+          </Link>
+
+          <Link
+            to="/customer"
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
+              location.pathname === '/customer'
+                ? 'text-[#002E6E] bg-[#F5F7FA] font-bold border border-[#E0E6ED]'
+                : 'text-[#6B7A90] hover:text-[#002E6E]'
+            }`}
+          >
+            Customer Hub
           </Link>
 
           <Link
