@@ -157,11 +157,22 @@ export interface VoiceIntentResult {
   reply: string;
 }
 
+export type CopilotLanguage = 'en' | 'hi' | 'hinglish';
+
+export type CopilotAction =
+  | { type: 'restock'; productName: string; quantity: number }
+  | { type: 'open_tab'; tab: 'overview' | 'inventory' | 'feedback' };
+
 export interface CopilotMessage {
   id: string;
   sender: 'user' | 'assistant';
   text: string;
   timestamp: number;
+  speech?: string;
+  language?: CopilotLanguage;
+  action?: CopilotAction | null;
+  /** 'gemini' when answered by the LLM, 'local' for the deterministic offline engine */
+  source?: 'gemini' | 'local';
   recommendation?: {
     actionType: 'combo_offer' | 'reorder_stock' | 'flash_sale';
     title: string;

@@ -98,6 +98,31 @@
 .eq-bar-4 { animation: eq-bar 0.8s infinite ease-in-out 0.4s; }
 .eq-bar-5 { animation: eq-bar 0.8s infinite ease-in-out 0.15s; }
 
+@keyframes robot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes robot-blink {
+  0%, 42%, 46%, 100% { transform: scaleY(1); }
+  44% { transform: scaleY(0.08); }
+}
+@keyframes robot-orbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes robot-ring {
+  0% { transform: scale(0.86); opacity: 0.55; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@keyframes robot-talk {
+  0%, 100% { transform: scaleY(0.55); }
+  50% { transform: scaleY(1); }
+}
+.robot-float { animation: robot-float 3.4s ease-in-out infinite; }
+.robot-blink { transform-box: fill-box; transform-origin: center; animation: robot-blink 4.8s infinite; }
+.robot-orbit { animation: robot-orbit 2.8s linear infinite; }
+.robot-ring { animation: robot-ring 1.5s ease-out infinite; }
+.robot-talk { transform-box: fill-box; transform-origin: center; animation: robot-talk 0.28s ease-in-out infinite; }
+
 /* Hide scrollbars */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp,
   Package,
   CreditCard,
   Sparkles,
-  Send,
   RefreshCw,
   ShoppingBag,
-  Volume2,
   CheckCircle2,
   Search,
   Plus,
@@ -17,7 +15,6 @@ import {
   ExternalLink,
   AlertTriangle,
   Lightbulb,
-  Square,
 } from 'lucide-react';
 import {
   getStore,
@@ -29,9 +26,8 @@ import {
   resetToSeedData,
   updateProductStock,
 } from '../services/db';
-import { askMerchantCopilot } from '../services/aiService';
-import { Product, Transaction, Feedback, Insight, CopilotMessage } from '../types';
-import { soundFX } from '../utils/audio';
+import { Product, Transaction, Feedback, Insight } from '../types';
+import { MerchantVoiceAgent } from '../components/MerchantVoiceAgent';
 
 export const MerchantDashboardPage: React.FC = () => {
   const [store, setStore] = useState(getStore());
@@ -41,17 +37,7 @@ export const MerchantDashboardPage: React.FC = () => {
   const [insights, setInsights] = useState<Insight[]>(getInsights());
 
   const [activeTab, setActiveTab] = useState<'overview' | 'copilot' | 'inventory' | 'feedback'>('overview');
-  const [copilotQuestion, setCopilotQuestion] = useState('');
-  const [copilotLoading, setCopilotLoading] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [copilotMessages, setCopilotMessages] = useState<CopilotMessage[]>([
-    {
-      id: 'welcome',
-      sender: 'assistant',
-      text: 'Namaste! Main aapka FinBuddy AI Copilot hoon. Aap mujhse aaj ki sales, inventory status, customer feedback ya promotional combo offers ke baare mein pooch sakte hain.',
-      timestamp: Date.now() - 60000,
-    },
-  ]);
+  const [queuedCopilotQuestion, setQueuedCopilotQuestion] = useState<{ id: number; text: string } | null>(null);
 
   const [inventorySearch, setInventorySearch] = useState('');
   const [resetSuccessToast, setResetSuccessToast] = useState(false);
@@ -82,61 +68,19 @@ export const MerchantDashboardPage: React.FC = () => {
   const lowStockProducts = products.filter((p) => p.stock <= p.lowStockThreshold);
   const lowStockCount = lowStockProducts.length;
 
-  const handleAskCopilot = async (q: string) => {
-    if (!q.trim()) return;
-    const userMsg: CopilotMessage = {
-      id: `usr_${Date.now()}`,
-      sender: 'user',
-      text: q,
-      timestamp: Date.now(),
-    };
-    setCopilotMessages((prev) => [...prev, userMsg]);
-    setCopilotQuestion('');
-    setCopilotLoading(true);
-
-    try {
-      const assistantMsg = await askMerchantCopilot(q, store.id);
-      setCopilotMessages((prev) => [...prev, assistantMsg]);
-    } catch (e) {
-      console.warn('Copilot error:', e);
-    } finally {
-      setCopilotLoading(false);
-    }
+  const handleAskCopilot = (q: string) => {
+    setActiveTab('copilot');
+    setQueuedCopilotQuestion({ id: Date.now(), text: q });
   };
 
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-
-  const handleSpeakText = (msgId: string, text: string) => {
-    if (speakingMessageId === msgId) {
-      soundFX.stopSpeaking();
-      setSpeakingMessageId(null);
-      setIsSpeaking(false);
-      return;
-    }
-    soundFX.stopSpeaking();
-    setSpeakingMessageId(msgId);
-    setIsSpeaking(true);
-    soundFX.speakText(text, () => {
-      setSpeakingMessageId(null);
-      setIsSpeaking(false);
-    });
-  };
+  const handleQueuedQuestionHandled = useCallback(() => setQueuedCopilotQuestion(null), []);
+  const handleCopilotOpenTab = useCallback((tab: 'overview' | 'inventory' | 'feedback') => setActiveTab(tab), []);
 
   const handleResetData = () => {
     resetToSeedData();
     setResetSuccessToast(true);
     setTimeout(() => setResetSuccessToast(false), 2500);
   };
-
-  // Suggested questions in Hindi & English (Section 55)
-  const quickCopilotPrompts = [
-    'Aaj sales kaisi rahi?',
-    'Sabse zyada kya bika?',
-    'Stock kahan low hai?',
-    'Snack aur drink combo recommendation?',
-    'Customer feedback kya bol raha hai?',
-    'Should I take a 10 lakh business loan?', // Guardrail test
-  ];
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] text-[#1C2D42] flex flex-col pb-16">
@@ -319,10 +263,7 @@ export const MerchantDashboardPage: React.FC = () => {
 
                     {ins.type === 'sales_trend' && (
                       <button
-                        onClick={() => {
-                          setActiveTab('copilot');
-                          handleAskCopilot('Draft the snack and drink combo offer for evening rush');
-                        }}
+                        onClick={() => handleAskCopilot('Draft the snack and drink combo offer for evening rush')}
                         className="px-3.5 py-1.5 rounded-lg bg-[#FFA800] hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
@@ -387,174 +328,15 @@ export const MerchantDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2: AI COPILOT (Section 29: Ask Your Business) */}
-        {activeTab === 'copilot' && (
-          <div className="paytm-card p-6 bg-white flex flex-col h-[700px] shadow-[0_2px_12px_rgba(0,46,110,0.08)]">
-            {/* Copilot Header */}
-            <div className="border-b border-[#E0E6ED] pb-4 mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#002E6E] text-white flex items-center justify-center font-bold text-sm shadow-sm">
-                  🎙
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#002E6E]">FinBuddy Merchant Copilot</h3>
-                  <p className="text-xs text-[#6B7A90]">
-                    Ask your business partner in Hindi, Hinglish, or English
-                  </p>
-                </div>
-              </div>
-
-              {/* Equalizer animation when speaking */}
-              {isSpeaking && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-[#00BAF2] text-xs font-semibold">
-                  <div className="flex items-center gap-0.5 h-4">
-                    <div className="w-0.5 bg-[#00BAF2] eq-bar-1" />
-                    <div className="w-0.5 bg-[#00BAF2] eq-bar-2" />
-                    <div className="w-0.5 bg-[#002E6E] eq-bar-3" />
-                    <div className="w-0.5 bg-[#00BAF2] eq-bar-4" />
-                  </div>
-                  <span>Speaking...</span>
-                </div>
-              )}
-            </div>
-
-            {/* Suggested Question Chips (Section 55) */}
-            <div className="mb-4">
-              <span className="text-[11px] font-bold text-[#6B7A90] block mb-2 uppercase tracking-wider">
-                Suggested Questions (Tap to ask):
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {quickCopilotPrompts.map((prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => handleAskCopilot(prompt)}
-                    disabled={copilotLoading}
-                    className="px-3 py-1.5 rounded-md bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] hover:text-[#00BAF2] text-xs font-semibold border border-[#E0E6ED] transition"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Chat Stream (Section 31: 3-part layout) */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
-              {copilotMessages.map((msg) => {
-                const isAssistant = msg.sender === 'assistant';
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${isAssistant ? 'items-start' : 'items-end'}`}
-                  >
-                    <div
-                      className={`max-w-xl rounded-xl p-4 text-xs sm:text-sm leading-relaxed shadow-sm ${
-                        isAssistant
-                          ? 'bg-[#F9FBFE] border border-[#E0E6ED] text-[#1C2D42]'
-                          : 'bg-[#00BAF2] text-white font-semibold'
-                      }`}
-                    >
-                      <p className="whitespace-pre-line">{msg.text}</p>
-
-                      {/* Supporting Metrics Panel */}
-                      {msg.metrics && (
-                        <div className="mt-3 pt-3 border-t border-[#E0E6ED] grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                          {Object.entries(msg.metrics).map(([k, v]) => (
-                            <div key={k} className="bg-white p-2 rounded border border-[#E0E6ED]">
-                              <span className="text-[10px] text-[#6B7A90] block truncate">{k}</span>
-                              <span className="font-extrabold text-[#002E6E]">{v}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Recommendation Card (Section 32: #FFA800) */}
-                      {msg.recommendation && (
-                        <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between gap-3">
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[#FFA800] block">
-                              Growth Recommendation
-                            </span>
-                            <h5 className="font-bold text-[#002E6E] text-xs">{msg.recommendation.title}</h5>
-                            <p className="text-[11px] text-[#4A5568] mt-0.5">{msg.recommendation.details}</p>
-                          </div>
-                          <button
-                            onClick={() => alert(`Executed: ${msg.recommendation?.title}`)}
-                            className="px-3 py-1.5 rounded-md bg-[#FFA800] hover:bg-amber-500 text-white text-xs font-bold shrink-0 transition"
-                          >
-                            Apply Offer
-                          </button>
-                        </div>
-                      )}
-
-                      {/* TTS Speak Button: Google TTS - Hindi 2 (Men voice) */}
-                      {isAssistant && (
-                        <div className="mt-2.5 flex justify-end">
-                          <button
-                            onClick={() => handleSpeakText(msg.id, msg.text)}
-                            className={`text-[11px] flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-md transition border ${
-                              speakingMessageId === msg.id
-                                ? 'bg-sky-50 text-[#002E6E] border-[#00BAF2]'
-                                : 'text-[#6B7A90] hover:text-[#00BAF2] border-transparent hover:border-[#E0E6ED] hover:bg-[#F5F7FA]'
-                            }`}
-                            title="Speak answer with Google TTS Hindi 2 (Men voice)"
-                          >
-                            {speakingMessageId === msg.id ? (
-                              <>
-                                <Square className="w-3 h-3 fill-[#00BAF2] text-[#00BAF2]" />
-                                <span className="text-[#002E6E] font-bold">Stop Audio</span>
-                                <span className="flex gap-0.5 items-center ml-1">
-                                  <span className="w-0.5 h-2 bg-[#00BAF2] animate-bounce" />
-                                  <span className="w-0.5 h-3 bg-[#002E6E] animate-bounce delay-100" />
-                                  <span className="w-0.5 h-2 bg-[#00BAF2] animate-bounce delay-200" />
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <Volume2 className="w-3.5 h-3.5 text-[#00BAF2]" />
-                                <span>Listen (Google TTS - Hindi 2 Men)</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {copilotLoading && (
-                <div className="flex items-center gap-2 text-xs text-[#00BAF2] font-semibold animate-pulse">
-                  <Sparkles className="w-4 h-4 animate-spin" />
-                  <span>Analyzing store transaction and inventory signals...</span>
-                </div>
-              )}
-            </div>
-
-            {/* Input Bar */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleAskCopilot(copilotQuestion);
-              }}
-              className="flex items-center gap-2 pt-2 border-t border-[#E0E6ED]"
-            >
-              <input
-                type="text"
-                placeholder="Ask about sales trends, low stock, or operational recommendations..."
-                value={copilotQuestion}
-                onChange={(e) => setCopilotQuestion(e.target.value)}
-                className="flex-1 px-4 py-3 bg-white border border-[#E0E6ED] rounded-lg text-xs sm:text-sm text-[#1C2D42] placeholder-[#6B7A90] focus:outline-none focus:border-[#00BAF2]"
-              />
-              <button
-                type="submit"
-                disabled={copilotLoading || !copilotQuestion.trim()}
-                className="h-11 px-5 rounded-lg bg-[#00BAF2] hover:bg-[#00a4d6] disabled:opacity-50 text-white font-bold text-xs shadow-sm transition"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
-          </div>
-        )}
+        {/* TAB 2: AI COPILOT — kept mounted so chat history survives tab switches */}
+        <div className={activeTab === 'copilot' ? '' : 'hidden'}>
+          <MerchantVoiceAgent
+            storeId={store.id}
+            onOpenTab={handleCopilotOpenTab}
+            queuedQuestion={queuedCopilotQuestion}
+            onQueuedQuestionHandled={handleQueuedQuestionHandled}
+          />
+        </div>
 
         {/* TAB 3: INVENTORY (Section 33: Operational table) */}
         {activeTab === 'inventory' && (
