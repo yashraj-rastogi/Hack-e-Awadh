@@ -16,11 +16,13 @@ export const MerchantLoginPage: React.FC = () => {
     <div className="min-h-screen bg-[#F5F7FA] text-[#1C2D42] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white border border-[#E0E6ED] rounded-2xl p-8 shadow-[0_4px_20px_rgba(0,46,110,0.08)] relative">
         <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-xl bg-sky-50 text-[#002E6E] flex items-center justify-center mx-auto mb-3 border border-sky-100 shadow-sm">
-            <Store className="w-6 h-6 text-[#00BAF2]" />
-          </div>
+          <img
+            src="/finbuddy-logo.png"
+            alt="FinBuddy Logo"
+            className="h-12 object-contain mx-auto mb-3 mix-blend-multiply"
+          />
           <h1 className="text-2xl font-black text-[#002E6E]">Merchant Sign In</h1>
-          <p className="text-xs text-[#6B7A90] mt-1">Access Awadh Mart (Hazratganj) Hub</p>
+          <p className="text-xs text-[#6B7A90] mt-0.5">Access Awadh Mart (Hazratganj) Hub</p>
         </div>
 
         {/* Demo Credentials Box */}

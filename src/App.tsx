@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
+import { HomePage } from './pages/HomePage';
 import { StoreLandingPage } from './pages/StoreLandingPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { ReceiptPage } from './pages/ReceiptPage';
@@ -10,10 +11,10 @@ import { MerchantLoginPage } from './pages/MerchantLoginPage';
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      <div className="min-h-screen bg-[#F5F7FA] text-[#1C2D42] flex flex-col font-sans">
         <Navbar />
         <Routes>
-          <Route path="/" element={<StoreLandingPage />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/s/:storeId" element={<StoreLandingPage />} />
           <Route path="/s/:storeId/checkout" element={<CheckoutPage />} />
           <Route path="/s/:storeId/receipt/:receiptId" element={<ReceiptPage />} />

@@ -19,6 +19,15 @@ export const StoreLandingPage: React.FC = () => {
     <div className="min-h-screen bg-[#F5F7FA] text-[#1C2D42] flex flex-col justify-between">
       {/* Main Container */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-14 flex-1 flex flex-col items-center text-center">
+        {/* Official FinBuddy Logo */}
+        <div className="flex justify-center mb-5">
+          <img
+            src="/finbuddy-logo.png"
+            alt="FinBuddy Logo"
+            className="h-12 sm:h-14 object-contain mix-blend-multiply"
+          />
+        </div>
+
         {/* Hackathon PS-02 Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#E0E6ED] text-xs font-semibold text-[#002E6E] mb-6 shadow-sm">
           <span className="w-2 h-2 rounded-full bg-[#00BAF2]" />

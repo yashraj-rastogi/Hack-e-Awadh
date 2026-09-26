@@ -12,13 +12,17 @@ export const Navbar: React.FC = () => {
       <header className="sticky top-0 z-40 bg-[#002E6E] text-white border-b border-[#001D47] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/merchant/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#00BAF2] flex items-center justify-center font-black text-white text-base shadow-sm">
-                F
-              </div>
+            <Link to="/merchant/dashboard" className="flex items-center gap-2.5">
+              <img
+                src="/finbuddy-icon.png"
+                alt="FinBuddy"
+                className="w-9 h-9 object-contain rounded-lg p-0.5 bg-white shadow-xs"
+              />
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-lg tracking-tight text-white">FinBuddy</span>
+                  <span className="font-black text-lg tracking-tight text-white">
+                    Fin<span className="text-[#00BAF2]">Buddy</span>
+                  </span>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-[#00BAF2] text-white">
                     Merchant
                   </span>
@@ -29,6 +33,13 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <Link
+              to="/"
+              className="px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-medium text-blue-200 hover:text-white transition"
+            >
+              Overview
+            </Link>
+
             <Link
               to="/merchant/dashboard"
               className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold text-white bg-white/10 hover:bg-white/15 transition flex items-center gap-1.5"
@@ -42,7 +53,7 @@ export const Navbar: React.FC = () => {
               className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-[#00BAF2] hover:bg-[#00a4d6] text-white transition flex items-center gap-1.5 shadow-sm"
             >
               <ShoppingBag className="w-4 h-4" />
-              <span>Customer Self-Checkout</span>
+              <span>Customer Checkout</span>
             </Link>
 
             <a
@@ -66,13 +77,15 @@ export const Navbar: React.FC = () => {
     <header className="sticky top-0 z-40 bg-white border-b border-[#E0E6ED] shadow-[0_1px_4px_rgba(0,46,110,0.06)]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-[#002E6E] flex items-center justify-center font-black text-white text-base shadow-sm group-hover:bg-[#001D47] transition">
-            F
-          </div>
+          <img
+            src="/finbuddy-icon.png"
+            alt="FinBuddy"
+            className="w-9 h-9 object-contain rounded-lg p-0.5 bg-white shadow-xs group-hover:scale-105 transition"
+          />
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-xl tracking-tight text-[#002E6E]">
-                FinBuddy<span className="text-[#00BAF2]">.</span>
+              <span className="font-black text-xl tracking-tight text-[#002E6E]">
+                Fin<span className="text-[#00BAF2]">Buddy</span>
               </span>
               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-sky-50 text-[#002E6E] border border-sky-100">
                 Self-Checkout
@@ -83,6 +96,17 @@ export const Navbar: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            to="/"
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
+              location.pathname === '/'
+                ? 'text-[#002E6E] bg-[#F5F7FA] font-bold border border-[#E0E6ED]'
+                : 'text-[#6B7A90] hover:text-[#002E6E]'
+            }`}
+          >
+            Overview
+          </Link>
+
           <Link
             to="/s/store-awadh-01/checkout"
             className="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-[#00BAF2] hover:bg-[#00a4d6] text-white shadow-sm flex items-center gap-1.5 transition active:scale-95"
