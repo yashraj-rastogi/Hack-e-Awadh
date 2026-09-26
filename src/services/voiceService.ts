@@ -82,22 +82,57 @@ export interface VoiceHealth {
 let healthPromise: Promise<VoiceHealth> | null = null;
 let ttsDisabledUntil = 0;
 let sttDisabledUntil = 0;
-const BACKOFF_MS = 5 * 60 * 1000;
+const BACKOFF_MS = 20 * 1000;
+const HEALTH_TIMEOUT_MS = 12000;
 
 export function getVoiceHealth(force = false): Promise<VoiceHealth> {
-  if (!healthPromise || force) {
-    healthPromise = fetch('/api/voice/health', { cache: 'no-store' })
+  if (force) healthPromise = null;
+  if (!healthPromise) {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+    healthPromise = fetch('/api/voice/health', { cache: 'no-store', signal: controller.signal })
       .then(async (r) => {
         if (!r.ok) return { tts: false, stt: false };
         const data = (await r.json()) as Partial<VoiceHealth>;
         return { tts: !!data.tts, stt: !!data.stt };
       })
-      .catch(() => ({ tts: false, stt: false }));
+      .catch(() => ({ tts: false, stt: false }))
+      .finally(() => window.clearTimeout(timer))
+      .then((h) => {
+        if (!h.tts && !h.stt) healthPromise = null;
+        return h;
+      });
   }
   return healthPromise.then((h) => ({
     tts: h.tts && Date.now() > ttsDisabledUntil,
     stt: h.stt && Date.now() > sttDisabledUntil,
   }));
+}
+
+// A tiny silent wav. Playing it during the click unlocks later ElevenLabs playback.
+const SILENT_WAV =
+  'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+
+function ensureAudio(): HTMLAudioElement {
+  if (!currentAudio) currentAudio = new Audio();
+  return currentAudio;
+}
+
+/** Call synchronously from a click or pointerdown so the browser allows later playback. */
+export function primeVoicePlayback(): void {
+  if (typeof window === 'undefined') return;
+  const audio = ensureAudio();
+  audio.muted = true;
+  audio.src = SILENT_WAV;
+  audio
+    .play()
+    .then(() => {
+      audio.pause();
+      audio.muted = false;
+    })
+    .catch(() => {
+      audio.muted = false;
+    });
 }
 
 // -------------------------------------------------------------
@@ -118,7 +153,6 @@ let pendingOnEnd: (() => void) | null = null;
 function finishSpeaking(gen: number) {
   if (gen !== speakGeneration) return;
   if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
-  currentAudio = null;
   currentAudioUrl = null;
   currentAbort = null;
   const cb = pendingOnEnd;
@@ -130,14 +164,14 @@ export function stopSpeaking(): void {
   speakGeneration++;
   currentAbort?.abort();
   if (currentAudio) {
+    currentAudio.onended = null;
+    currentAudio.onerror = null;
     currentAudio.pause();
-    currentAudio.src = '';
   }
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
   }
   if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
-  currentAudio = null;
   currentAudioUrl = null;
   currentAbort = null;
   const cb = pendingOnEnd;
@@ -188,9 +222,10 @@ async function speakWithElevenLabs(
     if (blob.size < 500) throw new Error('Empty TTS audio');
 
     const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    currentAudio = audio;
+    const audio = ensureAudio();
     currentAudioUrl = url;
+    audio.muted = false;
+    audio.src = url;
 
     await new Promise<void>((resolve, reject) => {
       audio.onended = () => resolve();
@@ -204,12 +239,8 @@ async function speakWithElevenLabs(
     return true;
   } catch (e) {
     if (gen !== speakGeneration || (e instanceof DOMException && e.name === 'AbortError')) return true;
-    console.warn('ElevenLabs TTS unavailable, using browser voice:', e);
-    if (!(e instanceof DOMException && e.name === 'NotAllowedError')) {
-      ttsDisabledUntil = Date.now() + BACKOFF_MS;
-    }
+    console.warn('ElevenLabs TTS playback failed, using browser voice:', e);
     if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
-    currentAudio = null;
     currentAudioUrl = null;
     return false;
   }
@@ -320,6 +351,8 @@ export type RecognitionLocale = 'hi-IN' | 'en-IN';
 export interface ListenOptions {
   /** Locale for the browser Web Speech fallback only; ElevenLabs auto-detects. */
   fallbackLocale?: RecognitionLocale;
+  /** Bias ElevenLabs Scribe toward the language the merchant selected. */
+  language?: 'hi' | 'en';
   onPhase?: (phase: ListenPhase) => void;
   onInterim?: (text: string) => void;
   onLevel?: (level: number) => void;
@@ -386,13 +419,28 @@ function mapLanguageCode(code?: string | null): CopilotLanguage | undefined {
 }
 
 export async function startListening(opts: ListenOptions): Promise<ListenSession | null> {
-  const health = await getVoiceHealth();
   const canRecord =
     typeof window !== 'undefined' && typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+  // Start the mic prompt in this turn, before awaiting health, so the click gesture is still valid.
+  const micPromise = canRecord
+    ? navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      })
+    : Promise.reject(new Error('no-recorder'));
 
+  const health = await getVoiceHealth();
   if (health.stt && canRecord) {
-    return startElevenLabsListening(opts);
+    try {
+      const stream = await micPromise;
+      return startElevenLabsListening(opts, stream);
+    } catch (e) {
+      const name = e instanceof DOMException ? e.name : '';
+      opts.onError(name === 'NotAllowedError' || name === 'SecurityError' ? 'permission' : 'unsupported');
+      opts.onPhase?.('idle');
+      return null;
+    }
   }
+  micPromise.then((stream) => stream.getTracks().forEach((t) => t.stop())).catch(() => undefined);
   return startBrowserListening(opts);
 }
 
@@ -401,19 +449,7 @@ function pickRecorderMime(): string | undefined {
   return candidates.find((m) => MediaRecorder.isTypeSupported?.(m));
 }
 
-async function startElevenLabsListening(opts: ListenOptions): Promise<ListenSession | null> {
-  let stream: MediaStream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
-  } catch (e) {
-    const name = e instanceof DOMException ? e.name : '';
-    opts.onError(name === 'NotAllowedError' || name === 'SecurityError' ? 'permission' : 'unsupported');
-    opts.onPhase?.('idle');
-    return null;
-  }
-
+async function startElevenLabsListening(opts: ListenOptions, stream: MediaStream): Promise<ListenSession | null> {
   const mimeType = pickRecorderMime();
   const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
   const chunks: Blob[] = [];
@@ -475,7 +511,10 @@ async function startElevenLabsListening(opts: ListenOptions): Promise<ListenSess
     try {
       const resp = await fetch('/api/stt', {
         method: 'POST',
-        headers: { 'Content-Type': blob.type || 'audio/webm' },
+        headers: {
+          'Content-Type': blob.type || 'audio/webm',
+          'X-FinBuddy-Lang': opts.language === 'en' ? 'en' : 'hi',
+        },
         body: blob,
       });
       if (!resp.ok) {

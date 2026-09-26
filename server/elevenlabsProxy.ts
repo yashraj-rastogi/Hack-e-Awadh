@@ -88,7 +88,10 @@ function createHandlers(opts: ProxyOptions) {
 
   async function voiceExists(id: string): Promise<boolean> {
     try {
-      const r = await fetch(`${ELEVEN_BASE}/voices/${id}`, { headers: { 'xi-api-key': apiKey } });
+      const r = await fetch(`${ELEVEN_BASE}/voices/${id}`, {
+        headers: { 'xi-api-key': apiKey },
+        signal: AbortSignal.timeout(8000),
+      });
       return r.ok;
     } catch {
       return false;
@@ -130,6 +133,7 @@ function createHandlers(opts: ProxyOptions) {
         method: 'POST',
         headers: { 'xi-api-key': apiKey },
         body: form,
+        signal: AbortSignal.timeout(8000),
       });
       stt = r.ok || r.status === 400 || r.status === 422;
     } catch {
@@ -137,7 +141,7 @@ function createHandlers(opts: ProxyOptions) {
     }
 
     const value = { tts, stt };
-    healthCache = { at: Date.now(), value };
+    if (tts || stt) healthCache = { at: Date.now(), value };
     return value;
   }
 
@@ -184,10 +188,14 @@ function createHandlers(opts: ProxyOptions) {
     const contentType = (req.headers['content-type'] || 'audio/webm').split(';')[0].trim();
     const ext = contentType.includes('ogg') ? 'ogg' : contentType.includes('mp4') ? 'm4a' : contentType.includes('wav') ? 'wav' : contentType.includes('mpeg') ? 'mp3' : 'webm';
 
+    const langHeader = String(req.headers['x-finbuddy-lang'] || '').toLowerCase();
+    const languageCode = langHeader.startsWith('en') ? 'en' : langHeader.startsWith('hi') ? 'hi' : '';
+
     const form = new FormData();
     form.append('file', new Blob([new Uint8Array(audio)], { type: contentType }), `speech.${ext}`);
     form.append('model_id', STT_MODEL);
     form.append('tag_audio_events', 'false');
+    if (languageCode) form.append('language_code', languageCode);
 
     const upstream = await fetch(`${ELEVEN_BASE}/speech-to-text`, {
       method: 'POST',
