@@ -63,6 +63,13 @@ export const MerchantDashboardPage: React.FC = () => {
     'overview' | 'inventory' | 'analytics' | 'feedback' | 'copilot' | 'settings'
   >('overview');
   const [botOpen, setBotOpen] = useState(false);
+  const [botLang, setBotLang] = useState<'hi' | 'en'>(() => {
+    try {
+      return localStorage.getItem('finbuddy_ui_lang') === 'en' ? 'en' : 'hi';
+    } catch {
+      return 'hi';
+    }
+  });
   const [queuedCopilotQuestion, setQueuedCopilotQuestion] = useState<{ id: number; text: string } | null>(null);
   const [inventorySearch, setInventorySearch] = useState('');
   const [resetSuccessToast, setResetSuccessToast] = useState(false);
@@ -89,6 +96,15 @@ export const MerchantDashboardPage: React.FC = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   };
+
+  useEffect(() => {
+    const onLang = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail === 'en' || detail === 'hi') setBotLang(detail);
+    };
+    window.addEventListener('finbuddy-lang', onLang);
+    return () => window.removeEventListener('finbuddy-lang', onLang);
+  }, []);
 
   // Real-time listener for live sync
   useEffect(() => {
@@ -950,20 +966,26 @@ export const MerchantDashboardPage: React.FC = () => {
         {/* TAB 5: Ask FinBuddy opens the same floating panel used on every tab */}
         {activeTab === 'copilot' && (
           <div className="paytm-card p-8 sm:p-10 bg-white text-center max-w-lg mx-auto">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00BAF2]">Aapka dukaan saathi</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00BAF2]">
+              {botLang === 'hi' ? 'आपका दुकान साथी' : 'Your shop companion'}
+            </p>
             <h3 className="text-2xl font-black text-[#002E6E] mt-1">FinBuddy</h3>
             <p className="text-sm text-[#4A5568] mt-3 leading-relaxed">
-              Mic dabakar boliye ya type kijiye — Hindi, English ya Hinglish. FinBuddy har tab par neeche right corner mein rehta hai.
+              {botLang === 'hi'
+                ? 'माइक दबाकर बोलिए या लिखिए। FinBuddy हर टैब पर नीचे दाईं ओर रहता है।'
+                : 'Tap the mic or type. FinBuddy stays at the bottom-right on every tab.'}
             </p>
             {botOpen ? (
-              <p className="mt-4 text-xs font-semibold text-[#00BAF2]">Chat panel is open · bottom right</p>
+              <p className="mt-4 text-xs font-semibold text-[#00BAF2]">
+                {botLang === 'hi' ? 'चैट पैनल खुला है · नीचे दाईं ओर' : 'Chat panel is open · bottom right'}
+              </p>
             ) : (
               <button
                 type="button"
                 onClick={() => setBotOpen(true)}
                 className="mt-5 px-4 py-2 rounded-lg bg-[#00BAF2] hover:bg-[#00a4d6] text-white text-sm font-bold shadow-sm transition"
               >
-                Open FinBuddy
+                {botLang === 'hi' ? 'FinBuddy खोलें' : 'Open FinBuddy'}
               </button>
             )}
           </div>

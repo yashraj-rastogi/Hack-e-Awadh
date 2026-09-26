@@ -427,11 +427,11 @@ Rules:
 7. Always include the time range for trend claims (e.g. "last 7 days").
 8. Use explicit rupee amounts like ₹8,420.
 
-LANGUAGE RULE (critical): reply in the SAME language AND script as the merchant's latest message.
-- Devanagari Hindi input -> reply fully in Devanagari Hindi (product names may stay in English letters). language = "hi".
-- Hinglish (Hindi in English letters) input -> reply in Roman-script Hinglish, never Devanagari. language = "hinglish".
-- English input -> reply in simple Indian English. language = "en".
-Use everyday kirana-shop words (maal, stock, bikri, grahak, dukaan), short sentences, friendly respectful tone ("aap").
+LANGUAGE RULE (critical): the user message states a required reply language. Obey that language even if the merchant wrote in a different language or script.
+- Required Devanagari Hindi -> reply fully in Devanagari Hindi (product names may stay in English letters). language = "hi". Never use Roman Hinglish.
+- Required simple Indian English -> reply fully in English. language = "en". Do not use Devanagari.
+- If no required language is stated, match the merchant's message (Devanagari -> hi, Roman Hinglish -> hinglish, English -> en).
+Use everyday kirana-shop words, short sentences, friendly respectful tone ("aap" in Hindi).
 
 Return ONLY a JSON object:
 {
@@ -579,17 +579,85 @@ function sanitizeCopilotJson(
   return { text, speech, language, metrics, recommendation, action, source: 'gemini' };
 }
 
+function scriptMatches(text: string, lang: CopilotLanguage): boolean {
+  const devanagari = /[\u0900-\u097F]/.test(text);
+  if (lang === 'hi') return devanagari;
+  if (lang === 'en') return !devanagari;
+  return true;
+}
+
+export async function translateMerchantCopy(
+  items: { id: string; text: string; speech?: string }[],
+  target: 'hi' | 'en'
+): Promise<Record<string, { text: string; speech: string }>> {
+  if (!items.length || !GEMINI_API_KEY || GEMINI_API_KEY.length <= 10) return {};
+  const targetName = target === 'hi' ? 'natural Devanagari Hindi, not Roman Hinglish' : 'simple Indian English';
+  const raw = await callGeminiJson(
+    `You translate kirana-shop chat lines for a merchant in India.
+Target language: ${targetName}.
+Keep brand names, rupee amounts, and numbers unchanged. Do not add new advice.
+Return ONLY JSON: {"items":[{"id":string,"text":string,"speech":string}]}
+speech is one or two short sentences to be spoken aloud in the target language.`,
+    [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: JSON.stringify({
+              items: items.map((item) => ({
+                id: item.id,
+                text: item.text.slice(0, 700),
+                speech: (item.speech || item.text).slice(0, 400),
+              })),
+            }),
+          },
+        ],
+      },
+    ]
+  );
+  if (!raw) return {};
+  try {
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    const parsed = JSON.parse(cleaned) as { items?: { id?: string; text?: string; speech?: string }[] };
+    const out: Record<string, { text: string; speech: string }> = {};
+    for (const item of parsed.items || []) {
+      if (!item.id || typeof item.text !== 'string' || !item.text.trim()) continue;
+      if (!scriptMatches(item.text, target)) continue;
+      out[item.id] = { text: item.text.trim(), speech: (item.speech || item.text).trim() };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+async function alignReplyLanguage<T extends { text: string; speech?: string; language?: CopilotLanguage }>(
+  reply: T,
+  lang: CopilotLanguage
+): Promise<T> {
+  const aligned = { ...reply, language: lang };
+  if ((lang !== 'hi' && lang !== 'en') || scriptMatches(aligned.text, lang)) return aligned;
+  const translated = await translateMerchantCopy([{ id: 'reply', text: aligned.text, speech: aligned.speech }], lang);
+  const line = translated.reply;
+  if (!line) return aligned;
+  return { ...aligned, text: line.text, speech: line.speech };
+}
+
 export async function askMerchantCopilot(
   question: string,
   storeId: string = 'store-awadh-01',
-  history: CopilotMessage[] = []
+  history: CopilotMessage[] = [],
+  replyLanguage?: CopilotLanguage
 ): Promise<CopilotMessage> {
-  const lang = detectLanguage(question);
+  const lang =
+    replyLanguage === 'hi' || replyLanguage === 'en' || replyLanguage === 'hinglish'
+      ? replyLanguage
+      : detectLanguage(question);
   const base = { id: `copilot_${Date.now()}`, sender: 'assistant' as const, timestamp: Date.now() };
 
   // 1. Deterministic guardrail before any model call
   if (isRegulatedFinanceQuestion(question)) {
-    return { ...base, ...guardrailReply(lang) };
+    return { ...base, ...(await alignReplyLanguage(guardrailReply(lang), lang)) };
   }
 
   const snapshot = buildStoreSnapshot(storeId);
@@ -609,7 +677,10 @@ export async function askMerchantCopilot(
 ${JSON.stringify(snapshot.facts)}
 </store_facts>
 
-Merchant's message (detected language: ${lang}; reply in ${LANGUAGE_NAMES[lang]}):
+Required reply language: ${LANGUAGE_NAMES[lang]}.
+Write text and speech ONLY in that language, even if the merchant's message is in another language.
+
+Merchant's message:
 ${question}`;
 
     const raw = await callGeminiJson(COPILOT_SYSTEM_PROMPT, [...turns, { role: 'user', parts: [{ text: userTurn }] }]);
@@ -626,16 +697,16 @@ ${question}`;
           } else {
             // Fixed wording so the reply never claims the restock already happened
             const proposal = restockProposalReply(lang, product, clean.action.quantity);
-            return { ...base, ...clean, text: proposal.text, speech: proposal.speech, language: lang };
+            return { ...base, ...(await alignReplyLanguage({ ...clean, text: proposal.text, speech: proposal.speech }, lang)) };
           }
         }
-        return { ...base, ...clean };
+        return { ...base, ...(await alignReplyLanguage(clean, lang)) };
       }
       console.warn('Gemini copilot returned unusable JSON, using local engine');
     }
   }
 
   // 3. Offline deterministic engine grounded in the same facts
-  return { ...base, ...localCopilotReply(question, lang, snapshot, history) };
+  return { ...base, ...(await alignReplyLanguage(localCopilotReply(question, lang, snapshot, history), lang)) };
 }
 
