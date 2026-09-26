@@ -1,5 +1,7 @@
 # FinBuddy
 
+Hack-e-Awadh 2026 · Problem Statement 02: Merchant Growth AI (Paytm Track). Team Byte-Bandits (Lucknow): Yashraj Rastogi (Lead), Gaurav Kumar, Vineet Shukla.
+
 FinBuddy is a Paytm-style self-checkout for a small Indian kirana, plus a merchant copilot that answers from that store's own numbers.
 
 A shopper scans barcodes, talks to the cart in Hindi or English, and pays in a test checkout. The merchant sees the same sale on a dashboard and can ask FinBuddy, a floating bot, what sold, what is low, and what to do next. The demo store is **Awadh Mart (Hazratganj)** in Lucknow. The figures are synthetic demo data, seeded into the browser.
