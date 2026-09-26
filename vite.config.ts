@@ -2,11 +2,11 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import https from 'node:https'
+import { elevenLabsProxy } from './server/elevenlabsProxy.ts'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-
   return {
     plugins: [
       react(),
@@ -157,8 +157,11 @@ export default defineConfig(({ mode }) => {
           })
         },
       },
+      elevenLabsProxy({
+        apiKey: env.ELEVENLABS_API_KEY,
+        voiceId: env.ELEVENLABS_VOICE_ID,
+        ttsModel: env.ELEVENLABS_TTS_MODEL,
+      }),
     ],
   }
 })
-
-
