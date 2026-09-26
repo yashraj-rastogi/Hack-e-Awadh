@@ -51,7 +51,7 @@ Open **[http://localhost:5173](http://localhost:5173)** in your browser.
 
 ---
 
-## 📋 The 3-Minute Hackathon Winning Demo Script
+## 📋 Idea Workflow
 
 1. **The Setup:** Open the **Merchant Dashboard** (`/merchant/dashboard`) on a laptop and the **Customer Self-Checkout** (`/s/store-awadh-01/checkout`) on a smartphone (or adjacent browser window).
 2. **Camera Scan:** Point the phone camera at `Pepsi 500ml` on the Barcodes Sheet (`/test_barcodes.html`). Hear the crisp POS scan beep; Pepsi is added to the cart.
