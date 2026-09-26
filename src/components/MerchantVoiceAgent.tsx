@@ -13,17 +13,16 @@ import {
   WifiOff,
   X,
 } from 'lucide-react';
-import { askMerchantCopilot } from '../services/aiService';
 import { getProducts, updateProductStock } from '../services/db';
 import {
   getVoiceHealth,
   speak,
   stopSpeaking,
   startListening,
-  detectLanguage,
-  isBrowserRecognitionSupported,
+  primeVoicePlayback,
 } from '../services/voiceService';
-import type { ListenErrorCode, ListenPhase, ListenSession, RecognitionLocale, VoiceHealth } from '../services/voiceService';
+import type { ListenErrorCode, ListenPhase, ListenSession, VoiceHealth } from '../services/voiceService';
+import { askMerchantCopilot as askCopilot, translateMerchantCopy } from '../services/aiService';
 import type { CopilotLanguage, CopilotMessage } from '../types';
 
 type DashboardTab = 'overview' | 'inventory' | 'feedback';
@@ -39,51 +38,148 @@ interface MerchantVoiceAgentProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const SUGGESTED_PROMPTS = [
-  'Aaj sales kaisi rahi?',
-  'आज कितनी बिक्री हुई?',
-  'Which items are running low?',
-  'Sabse zyada kya bika is hafte?',
-  'Snack aur drink combo ka idea do',
-  'ग्राहक क्या बोल रहे हैं?',
-  'Should I take a 10 lakh business loan?',
-];
+type UiLang = 'hi' | 'en';
+const UI_LANG_KEY = 'finbuddy_ui_lang';
 
-const WELCOME: CopilotMessage = {
-  id: 'welcome',
-  sender: 'assistant',
-  text:
-    'Namaste! Main aapka FinBuddy Copilot hoon. Mic dabakar boliye ya type kijiye — Hindi, English ya Hinglish, jaise aap chahein.\n' +
-    'नमस्ते! आप हिंदी, English या Hinglish में बोलकर या लिखकर पूछ सकते हैं।\n\n' +
-    'Poochiye: aaj ki bikri, kaunsa maal kam hai, sabse zyada kya bika, combo offer ya grahak feedback.',
-  speech: 'Namaste! Main aapka FinBuddy Copilot hoon. Aap Hindi, English ya Hinglish mein bolkar ya type karke pooch sakte hain.',
-  language: 'hinglish',
-  timestamp: Date.now(),
-};
+function readUiLang(): UiLang {
+  try {
+    return localStorage.getItem(UI_LANG_KEY) === 'en' ? 'en' : 'hi';
+  } catch {
+    return 'hi';
+  }
+}
 
-const ERROR_TEXT: Record<ListenErrorCode | 'offline', string> = {
-  permission:
-    'Mic ki permission nahi mili. Address bar mein lock icon dabakar Microphone "Allow" kijiye. · Microphone permission was denied.',
-  'no-speech': 'Kuch sunai nahi diya — mic dabakar dobara boliye. · We didn\'t catch that, please try again.',
-  network:
-    'Voice service tak nahi pahunch paye. Aap type karke pooch sakte hain. · Voice service unreachable, you can type instead.',
-  unsupported:
-    'Is browser mein voice input nahi chalta — Chrome ya Edge use kijiye, ya type kijiye. · Voice input is not supported in this browser.',
-  unknown: 'Kuch gadbad ho gayi, dobara try kijiye. · Something went wrong, please try again.',
-  offline: 'Internet nahi hai — offline mode mein store data se jawab de raha hoon. · You are offline; answers come from local store data.',
-};
+function textMatchesLang(text: string, lang: UiLang): boolean {
+  const devanagari = /[\u0900-\u097F]/.test(text);
+  if (lang === 'hi') return devanagari || !/[A-Za-z]{3,}/.test(text);
+  return !devanagari;
+}
+
+const COPY = {
+  hi: {
+    eyebrow: 'आपका दुकान साथी',
+    status: {
+      idle: { title: 'तैयार हूँ', hint: 'माइक दबाकर बोलिए — हिंदी या अंग्रेज़ी' },
+      listening: { title: 'सुन रहा हूँ', hint: 'बोलिए, मैं सुन रहा हूँ' },
+      thinking: { title: 'सोच रहा हूँ', hint: 'दुकान का डेटा देख रहा हूँ' },
+      speaking: { title: 'बोल रहा हूँ', hint: 'जवाब सुनिए, या रोकें दबाएँ' },
+    },
+    chipsLabel: 'पूछकर देखिए',
+    prompts: [
+      'आज बिक्री कैसी रही?',
+      'कौन सा माल कम है?',
+      'इस हफ्ते सबसे ज़्यादा क्या बिका?',
+      'स्नैक और ड्रिंक का कॉम्बो बताओ',
+      'ग्राहक क्या कह रहे हैं?',
+      'क्या मुझे 10 लाख का बिज़नेस लोन लेना चाहिए?',
+    ],
+    welcome:
+      'नमस्ते! मैं आपका FinBuddy हूँ। माइक दबाकर बोलिए या लिखिए।\n\nपूछिए: आज की बिक्री, कौन सा माल कम है, सबसे ज़्यादा क्या बिका, कॉम्बो ऑफ़र या ग्राहक फ़ीडबैक।',
+    welcomeSpeech: 'नमस्ते! मैं आपका FinBuddy हूँ। आप हिंदी में बोलकर या लिखकर पूछ सकते हैं।',
+    placeholder: 'पूछिए… जैसे आज कितनी बिक्री हुई?',
+    mic: 'माइक दबाएँ',
+    stopMic: 'रुकें',
+    listening: 'सुन रहा हूँ… बोलिए',
+    understanding: 'समझ रहा हूँ…',
+    thinking: 'दुकान का डेटा देख रहा हूँ…',
+    voiceOn: 'आवाज़ चालू',
+    voiceOff: 'आवाज़ बंद',
+    speaking: 'बोल रहा हूँ',
+    listen: 'सुनिए',
+    stop: 'रोकें',
+    cancel: 'रद्द',
+    close: 'बंद करें',
+    open: 'FinBuddy खोलें',
+    send: 'भेजें',
+    confirm: 'हाँ, स्टॉक बढ़ाओ',
+    notNow: 'अभी नहीं',
+    skipped: 'छोड़ दिया · कोई बदलाव नहीं',
+    stockUpdated: 'स्टॉक अपडेट हो गया',
+    suggestion: 'सुझाव',
+    saveDraft: 'ड्राफ्ट सेव करें',
+    draftSaved: 'ड्राफ्ट सेव हो गया',
+    offlineAnswer: 'ऑफ़लाइन जवाब · दुकान का डेटा',
+    aiAnswer: 'एआई जवाब · दुकान का डेटा',
+    errors: {
+      permission: 'माइक की अनुमति नहीं मिली। एड्रेस बार में लॉक आइकन दबाकर Microphone Allow कीजिए।',
+      'no-speech': 'कुछ सुनाई नहीं दिया। माइक दबाकर दोबारा बोलिए।',
+      network: 'आवाज़ सेवा तक नहीं पहुँच पाए। आप टाइप करके पूछ सकते हैं।',
+      unsupported: 'इस ब्राउज़र में आवाज़ इनपुट नहीं चलता। Chrome या Edge इस्तेमाल कीजिए, या टाइप कीजिए।',
+      unknown: 'कुछ गड़बड़ हो गई। दोबारा कोशिश कीजिए।',
+      offline: 'इंटरनेट नहीं है। ऑफ़लाइन मोड में दुकान के डेटा से जवाब दे रहा हूँ।',
+    } as Record<ListenErrorCode | 'offline', string>,
+  },
+  en: {
+    eyebrow: 'Your shop companion',
+    status: {
+      idle: { title: 'Ready', hint: 'Tap the mic and speak — Hindi or English' },
+      listening: { title: 'Listening', hint: 'Speak, I am listening' },
+      thinking: { title: 'Thinking', hint: 'Checking your store data' },
+      speaking: { title: 'Speaking', hint: 'Listen to the answer, or tap Stop' },
+    },
+    chipsLabel: 'Try asking',
+    prompts: [
+      'How were sales today?',
+      'Which items are running low?',
+      'What sold the most this week?',
+      'Suggest a snack and drink combo',
+      'What are customers saying?',
+      'Should I take a 10 lakh business loan?',
+    ],
+    welcome:
+      'Namaste! I am FinBuddy. Tap the mic and speak, or type.\n\nAsk about today\'s sales, what is low in stock, what sold most, a combo offer, or customer feedback.',
+    welcomeSpeech: 'Namaste! I am FinBuddy. You can speak or type in English.',
+    placeholder: 'Ask… e.g. How much did we sell today?',
+    mic: 'Tap mic',
+    stopMic: 'Stop',
+    listening: 'Listening… please speak',
+    understanding: 'Understanding…',
+    thinking: 'Checking your store data…',
+    voiceOn: 'Voice on',
+    voiceOff: 'Voice off',
+    speaking: 'Speaking',
+    listen: 'Listen',
+    stop: 'Stop',
+    cancel: 'Cancel',
+    close: 'Close',
+    open: 'Open FinBuddy',
+    send: 'Send',
+    confirm: 'Confirm restock',
+    notNow: 'Not now',
+    skipped: 'Skipped · no change made',
+    stockUpdated: 'Stock updated to',
+    suggestion: 'Suggestion',
+    saveDraft: 'Save as draft',
+    draftSaved: 'Draft saved',
+    offlineAnswer: 'Offline answer · store data',
+    aiAnswer: 'AI answer · store data',
+    errors: {
+      permission: 'Microphone permission was denied. Tap the lock icon in the address bar and allow the microphone.',
+      'no-speech': 'We did not catch that. Tap the mic and try again.',
+      network: 'Voice service is unreachable. You can type your question instead.',
+      unsupported: 'Voice input is not supported in this browser. Use Chrome or Edge, or type instead.',
+      unknown: 'Something went wrong. Please try again.',
+      offline: 'You are offline. Answers come from local store data.',
+    } as Record<ListenErrorCode | 'offline', string>,
+  },
+} as const;
+
+function welcomeMessage(lang: UiLang): CopilotMessage {
+  const copy = COPY[lang];
+  return {
+    id: 'welcome',
+    sender: 'assistant',
+    text: copy.welcome,
+    speech: copy.welcomeSpeech,
+    language: lang,
+    timestamp: Date.now(),
+  };
+}
 
 const VOICE_PREF_KEY = 'finbuddy_voice_replies';
 
 type ActionState = { status: 'done'; newStock: number } | { status: 'dismissed' };
 type RobotMode = 'idle' | 'listening' | 'thinking' | 'speaking';
-
-const ROBOT_STATUS: Record<RobotMode, { title: string; hint: string }> = {
-  idle: { title: 'Taiyar hoon', hint: 'Mic dabao aur boliye — Hindi, English ya Hinglish' },
-  listening: { title: 'Sun raha hoon', hint: 'Boliye, main sun raha hoon' },
-  thinking: { title: 'Soch raha hoon', hint: 'Dukaan ka data dekh raha hoon' },
-  speaking: { title: 'Bol raha hoon', hint: 'Jawab suniye, ya Stop dabayein' },
-};
 
 function ShopkeeperRobot({ mode, size = 'panel' }: { mode: RobotMode; size?: 'panel' | 'fab' }) {
   const listening = mode === 'listening';
@@ -153,7 +249,8 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
   open,
   onOpenChange,
 }) => {
-  const [messages, setMessages] = useState<CopilotMessage[]>([WELCOME]);
+  const [uiLang, setUiLang] = useState<UiLang>(readUiLang);
+  const [messages, setMessages] = useState<CopilotMessage[]>(() => [welcomeMessage(readUiLang())]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [voiceReplies, setVoiceReplies] = useState<boolean>(() => localStorage.getItem(VOICE_PREF_KEY) !== 'off');
@@ -164,11 +261,12 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
   const [audioLive, setAudioLive] = useState(false);
   const [error, setError] = useState<{ code: ListenErrorCode | 'offline'; detail?: string } | null>(null);
   const [health, setHealth] = useState<VoiceHealth | null>(null);
-  const [fallbackLocale, setFallbackLocale] = useState<RecognitionLocale>('hi-IN');
+  const uiLangRef = useRef(uiLang);
   const [actionStates, setActionStates] = useState<Record<string, ActionState>>({});
   const [draftedRecs, setDraftedRecs] = useState<Record<string, boolean>>({});
 
   const messagesRef = useRef<CopilotMessage[]>(messages);
+  const translateGen = useRef(0);
   const sessionRef = useRef<ListenSession | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const voiceRepliesRef = useRef(voiceReplies);
@@ -185,6 +283,37 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
   }, [voiceReplies]);
 
   useEffect(() => {
+    uiLangRef.current = uiLang;
+    try {
+      localStorage.setItem(UI_LANG_KEY, uiLang);
+    } catch {
+      // ignore private-mode storage failures
+    }
+    window.dispatchEvent(new CustomEvent('finbuddy-lang', { detail: uiLang }));
+    const gen = ++translateGen.current;
+    setMessages((prev) => prev.map((m) => (m.id === 'welcome' ? welcomeMessage(uiLang) : m)));
+    const pending = messagesRef.current.filter((m) => m.id !== 'welcome' && !textMatchesLang(m.text, uiLang));
+    if (!pending.length) return;
+    let cancelled = false;
+    translateMerchantCopy(
+      pending.map((m) => ({ id: m.id, text: m.text, speech: m.speech })),
+      uiLang
+    ).then((translated) => {
+      if (cancelled || gen !== translateGen.current) return;
+      setMessages((prev) =>
+        prev.map((m) => {
+          const line = translated[m.id];
+          if (!line) return m;
+          return { ...m, text: line.text, speech: line.speech, language: uiLang };
+        })
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [uiLang]);
+
+  useEffect(() => {
     let alive = true;
     getVoiceHealth().then((h) => alive && setHealth(h));
     return () => {
@@ -195,9 +324,11 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
   }, []);
 
   const speakMessage = useCallback((msg: CopilotMessage) => {
+    primeVoicePlayback();
     setSpeakingId(msg.id);
     setAudioLive(false);
-    speak(msg.speech || msg.text, msg.language || detectLanguage(msg.text), {
+    const spokenLang: CopilotLanguage = uiLangRef.current === 'en' ? 'en' : 'hi';
+    speak(msg.speech || msg.text, spokenLang, {
       onStart: () => setAudioLive(true),
       onEnd: () => {
         setAudioLive(false);
@@ -221,13 +352,15 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
     async (raw: string) => {
       const q = raw.trim();
       if (!q) return;
+      primeVoicePlayback();
       stopSpeaking();
+      const replyLang: CopilotLanguage = uiLangRef.current === 'en' ? 'en' : 'hi';
       setError(typeof navigator !== 'undefined' && !navigator.onLine ? { code: 'offline' } : null);
       const userMsg: CopilotMessage = {
         id: `usr_${Date.now()}`,
         sender: 'user',
         text: q,
-        language: detectLanguage(q),
+        language: replyLang,
         timestamp: Date.now(),
       };
       const history = messagesRef.current;
@@ -237,7 +370,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
       setLoading(true);
 
       try {
-        const reply = await askMerchantCopilot(q, storeId, [...history, userMsg]);
+        const reply = await askCopilot(q, storeId, [...history, userMsg], replyLang);
         setMessages((prev) => [...prev, reply]);
         if (reply.action?.type === 'open_tab') {
           const tab = reply.action.tab;
@@ -268,12 +401,15 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
       return;
     }
     if (phase === 'processing' || loading) return;
+    primeVoicePlayback();
     handleStopSpeaking();
     setError(null);
     setInterim('');
     setPhase('listening');
+    const replyLang = uiLangRef.current;
     const session = await startListening({
-      fallbackLocale,
+      language: replyLang,
+      fallbackLocale: replyLang === 'en' ? 'en-IN' : 'hi-IN',
       onPhase: (p) => {
         setPhase(p);
         if (p === 'idle') {
@@ -304,16 +440,16 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
     const newStock = product.stock + quantity;
     updateProductStock(storeId, product.id, newStock);
     setActionStates((s) => ({ ...s, [msg.id]: { status: 'done', newStock } }));
-    const confirm = buildConfirmationMessage(msg.language || 'hinglish', productName, quantity, newStock);
+    const confirm = buildConfirmationMessage(uiLangRef.current, productName, quantity, newStock);
     setMessages((prev) => [...prev, confirm]);
     if (voiceRepliesRef.current) speakMessage(confirm);
   };
 
   const isListening = phase === 'listening';
   const isProcessing = phase === 'processing';
-  const showLocaleToggle = health !== null && !health.stt && isBrowserRecognitionSupported();
+  const copy = COPY[uiLang];
   const voiceEngineLabel =
-    health === null ? 'Checking voice…' : health.tts ? 'Natural male voice' : 'Phone male voice · Hindi / English';
+    health === null ? (uiLang === 'hi' ? 'आवाज़ जाँच रहे हैं…' : 'Checking voice…') : health.tts ? (uiLang === 'hi' ? 'पुरुष आवाज़ · ElevenLabs' : 'Male voice · ElevenLabs') : (uiLang === 'hi' ? 'फ़ोन की आवाज़' : 'Phone voice');
   const robotMode: RobotMode = isListening
     ? 'listening'
     : loading || isProcessing || (!!speakingId && !audioLive)
@@ -321,7 +457,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
       : speakingId
         ? 'speaking'
         : 'idle';
-  const status = ROBOT_STATUS[robotMode];
+  const status = copy.status[robotMode];
 
   return (
     <>
@@ -330,6 +466,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
       id="finbuddy-panel"
       role="dialog"
       aria-label="FinBuddy"
+      onPointerDown={primeVoicePlayback}
       className="paytm-card fixed z-[60] right-4 bottom-[7.75rem] flex flex-col overflow-hidden w-[min(380px,calc(100vw-2rem))] h-[min(560px,70vh)] p-3 sm:p-4 bg-white shadow-[0_8px_24px_rgba(0,46,110,0.16)]"
     >
       {/* Companion */}
@@ -337,7 +474,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
         <div className="flex items-center gap-2.5 min-w-0">
           <ShopkeeperRobot mode={robotMode} />
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#00BAF2]">Aapka dukaan saathi</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#00BAF2]">{copy.eyebrow}</p>
             <h3 className="text-base font-black text-[#002E6E] leading-tight">FinBuddy</h3>
             <p className="text-xs font-bold text-[#002E6E] truncate" role="status" title={status.hint}>
               {status.title}
@@ -358,7 +495,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
                 <span className="w-0.5 bg-[#002E6E] eq-bar-3" />
                 <span className="w-0.5 bg-[#00BAF2] eq-bar-4" />
               </span>
-              <span>Bol raha hoon</span>
+              <span>{copy.speaking}</span>
               <Square className="w-3 h-3 fill-current" />
             </button>
           )}
@@ -374,30 +511,30 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
             aria-pressed={voiceReplies}
           >
             {voiceReplies ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-            <span>Voice replies {voiceReplies ? 'ON' : 'OFF'}</span>
+            <span>{voiceReplies ? copy.voiceOn : copy.voiceOff}</span>
           </button>
 
-          {showLocaleToggle && (
-            <div className="flex items-center rounded-full border border-[#E0E6ED] overflow-hidden text-[11px] font-semibold" title="Speech recognition language">
-              {(['hi-IN', 'en-IN'] as RecognitionLocale[]).map((loc) => (
-                <button
-                  key={loc}
-                  onClick={() => setFallbackLocale(loc)}
-                  className={`px-2.5 py-1 transition ${
-                    fallbackLocale === loc ? 'bg-[#00BAF2] text-white' : 'bg-white text-[#6B7A90] hover:text-[#002E6E]'
-                  }`}
-                >
-                  {loc === 'hi-IN' ? 'Hindi/Hinglish' : 'English'}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center rounded-full border border-[#E0E6ED] overflow-hidden text-[11px] font-semibold" title={uiLang === 'hi' ? 'भाषा' : 'Language'}>
+            {(['hi', 'en'] as UiLang[]).map((loc) => (
+              <button
+                key={loc}
+                type="button"
+                onClick={() => setUiLang(loc)}
+                className={`px-2.5 py-1 transition ${
+                  uiLang === loc ? 'bg-[#00BAF2] text-white' : 'bg-white text-[#6B7A90] hover:text-[#002E6E]'
+                }`}
+                aria-pressed={uiLang === loc}
+              >
+                {loc === 'hi' ? 'हिंदी' : 'English'}
+              </button>
+            ))}
+          </div>
 
           <button
             type="button"
             onClick={closePanel}
             className="w-8 h-8 rounded-full border border-[#E0E6ED] bg-white text-[#6B7A90] hover:text-[#002E6E] hover:bg-[#F5F7FA] flex items-center justify-center transition"
-            aria-label="Close FinBuddy"
+            aria-label={copy.close}
           >
             <X className="w-4 h-4" />
           </button>
@@ -407,10 +544,10 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
       {/* Suggested chips */}
       <div className="mb-2 shrink-0">
         <span className="text-[10px] font-bold text-[#6B7A90] block mb-1.5 uppercase tracking-wider">
-          Try asking · पूछ कर देखिए
+          {copy.chipsLabel}
         </span>
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {SUGGESTED_PROMPTS.map((prompt) => (
+          {copy.prompts.map((prompt) => (
             <button
               key={prompt}
               onClick={() => askQuestion(prompt)}
@@ -456,7 +593,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
                   <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between gap-3">
                     <div>
                       <span className="text-[10px] uppercase font-bold tracking-wider text-[#FFA800] block">
-                        Suggestion · सुझाव
+                        {copy.suggestion}
                       </span>
                       <h5 className="font-bold text-[#002E6E] text-xs">{msg.recommendation.title}</h5>
                       {msg.recommendation.details && (
@@ -468,7 +605,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
                       disabled={draftedRecs[msg.id]}
                       className="px-3 py-1.5 rounded-md bg-[#FFA800] hover:bg-amber-500 disabled:bg-emerald-500 text-white text-xs font-bold shrink-0 transition"
                     >
-                      {draftedRecs[msg.id] ? 'Draft saved ✓' : 'Save as draft'}
+                      {draftedRecs[msg.id] ? copy.draftSaved : copy.saveDraft}
                     </button>
                   </div>
                 )}
@@ -487,23 +624,23 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
                           onClick={() => confirmRestock(msg)}
                           className="px-3 py-1.5 rounded-md bg-[#00BAF2] hover:bg-[#00a4d6] text-white text-xs font-bold transition"
                         >
-                          {msg.language === 'en' ? 'Confirm restock' : msg.language === 'hi' ? 'हाँ, स्टॉक बढ़ाओ' : 'Haan, stock badhao'}
+                          {copy.confirm}
                         </button>
                         <button
                           onClick={() => setActionStates((s) => ({ ...s, [msg.id]: { status: 'dismissed' } }))}
                           className="px-3 py-1.5 rounded-md bg-white border border-[#E0E6ED] text-[#6B7A90] hover:text-[#002E6E] text-xs font-semibold transition"
                         >
-                          {msg.language === 'en' ? 'Not now' : msg.language === 'hi' ? 'अभी नहीं' : 'Abhi nahi'}
+                          {copy.notNow}
                         </button>
                       </div>
                     )}
                     {actionState?.status === 'done' && (
                       <p className="mt-2 text-xs text-[#21C17A] font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Stock updated to {actionState.newStock}
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {copy.stockUpdated} {actionState.newStock}
                       </p>
                     )}
                     {actionState?.status === 'dismissed' && (
-                      <p className="mt-2 text-xs text-[#6B7A90]">Skipped · no change made</p>
+                      <p className="mt-2 text-xs text-[#6B7A90]">{copy.skipped}</p>
                     )}
                   </div>
                 )}
@@ -511,7 +648,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
                 {isAssistant && (
                   <div className="mt-2.5 flex items-center justify-between gap-3">
                     <span className="text-[10px] text-[#6B7A90]">
-                      {msg.source === 'local' ? 'Offline answer · store data' : msg.source === 'gemini' ? 'AI answer · store data' : ''}
+                      {msg.source === 'local' ? copy.offlineAnswer : msg.source === 'gemini' ? copy.aiAnswer : ''}
                     </span>
                     {speakingId === msg.id ? (
                       <button
@@ -519,7 +656,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
                         className="text-[11px] text-[#00BAF2] flex items-center gap-1 font-semibold"
                       >
                         <Square className="w-3 h-3 fill-current" />
-                        <span>Stop</span>
+                        <span>{copy.stop}</span>
                       </button>
                     ) : (
                       <button
@@ -528,7 +665,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
                         title="Speak answer out loud"
                       >
                         <Volume2 className="w-3.5 h-3.5" />
-                        <span>Suniye</span>
+                        <span>{copy.listen}</span>
                       </button>
                     )}
                   </div>
@@ -541,7 +678,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
         {loading && (
           <div className="flex items-center gap-2 text-xs text-[#00BAF2] font-semibold">
             <Sparkles className="w-4 h-4 animate-spin" />
-            <span>Store data dekh raha hoon… · Checking your store data…</span>
+            <span>{copy.thinking}</span>
           </div>
         )}
       </div>
@@ -561,7 +698,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
           ) : (
             <AlertTriangle className="w-4 h-4 shrink-0" />
           )}
-          <span className="flex-1">{ERROR_TEXT[error.code]}</span>
+          <span className="flex-1">{copy.errors[error.code]}</span>
           <button onClick={() => setError(null)} className="opacity-60 hover:opacity-100" aria-label="Dismiss">
             <X className="w-3.5 h-3.5" />
           </button>
@@ -585,16 +722,14 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
             <Loader2 className="w-4 h-4 text-[#00BAF2] animate-spin" />
           )}
           <span className="text-xs text-[#002E6E] font-medium truncate">
-            {isListening
-              ? interim || 'Sun raha hoon… boliye · Listening, please speak'
-              : 'Samajh raha hoon… · Understanding…'}
+            {isListening ? interim || copy.listening : copy.understanding}
           </span>
           {isListening && (
             <button
               onClick={() => sessionRef.current?.cancel()}
               className="ml-auto text-[11px] text-[#6B7A90] hover:text-[#FD5C63] font-semibold"
             >
-              Cancel
+              {copy.cancel}
             </button>
           )}
         </div>
@@ -616,8 +751,8 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
           className={`relative w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-white shadow-md transition disabled:opacity-50 ${
             isListening ? 'bg-[#FD5C63] hover:bg-rose-500' : 'bg-[#002E6E] hover:bg-[#00408f]'
           }`}
-          title={isListening ? 'Ruko' : 'Mic dabao aur bolo'}
-          aria-label={isListening ? 'Stop listening' : 'Mic dabao aur bolo'}
+          title={isListening ? copy.stopMic : copy.mic}
+          aria-label={isListening ? copy.stopMic : copy.mic}
         >
           {isListening && <span className="absolute inset-0 rounded-full bg-[#FD5C63] opacity-40 animate-ping" />}
           {isProcessing ? (
@@ -628,11 +763,11 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
             <Mic className="w-6 h-6" />
           )}
         </button>
-        <span className="mt-1 text-[10px] font-bold text-[#002E6E]">{isListening ? 'Ruko' : 'Mic dabao'}</span>
+        <span className="mt-1 text-[10px] font-bold text-[#002E6E]">{isListening ? copy.stopMic : copy.mic}</span>
         </div>
         <input
           type="text"
-          placeholder="Poochiye… e.g. Aaj kitni bikri hui? / Which items are low?"
+          placeholder={copy.placeholder}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="flex-1 min-w-0 px-4 py-3 bg-white border border-[#E0E6ED] rounded-full text-sm text-[#1C2D42] placeholder-[#6B7A90] focus:outline-none focus:border-[#00BAF2]"
@@ -641,7 +776,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
           type="submit"
           disabled={loading || !input.trim()}
           className="h-12 w-12 shrink-0 rounded-full bg-[#00BAF2] hover:bg-[#00a4d6] disabled:opacity-50 text-white flex items-center justify-center shadow-sm transition"
-          aria-label="Send"
+          aria-label={copy.send}
         >
           <Send className="w-4 h-4" />
         </button>
@@ -652,11 +787,12 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
     <div className="fixed z-[70] right-4 bottom-4 flex flex-col items-center gap-1">
       <button
         type="button"
+        onPointerDown={primeVoicePlayback}
         onClick={() => (open ? closePanel() : onOpenChange(true))}
         className="relative rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00BAF2] focus-visible:ring-offset-2"
         aria-expanded={open}
         aria-controls="finbuddy-panel"
-        aria-label={open ? 'Close FinBuddy' : `Open FinBuddy. ${status.title}`}
+        aria-label={open ? copy.close : `${copy.open}. ${status.title}`}
         title={status.title}
       >
         <ShopkeeperRobot mode={robotMode} size="fab" />
