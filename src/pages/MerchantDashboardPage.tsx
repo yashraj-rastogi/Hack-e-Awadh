@@ -37,6 +37,7 @@ export const MerchantDashboardPage: React.FC = () => {
   const [insights, setInsights] = useState<Insight[]>(getInsights());
 
   const [activeTab, setActiveTab] = useState<'overview' | 'copilot' | 'inventory' | 'feedback'>('overview');
+  const [botOpen, setBotOpen] = useState(false);
   const [queuedCopilotQuestion, setQueuedCopilotQuestion] = useState<{ id: number; text: string } | null>(null);
 
   const [inventorySearch, setInventorySearch] = useState('');
@@ -69,8 +70,13 @@ export const MerchantDashboardPage: React.FC = () => {
   const lowStockCount = lowStockProducts.length;
 
   const handleAskCopilot = (q: string) => {
-    setActiveTab('copilot');
+    setBotOpen(true);
     setQueuedCopilotQuestion({ id: Date.now(), text: q });
+  };
+
+  const selectTab = (tab: 'overview' | 'copilot' | 'inventory' | 'feedback') => {
+    setActiveTab(tab);
+    if (tab === 'copilot') setBotOpen(true);
   };
 
   const handleQueuedQuestionHandled = useCallback(() => setQueuedCopilotQuestion(null), []);
@@ -83,7 +89,7 @@ export const MerchantDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA] text-[#1C2D42] flex flex-col pb-16">
+    <div className="min-h-screen bg-[#F5F7FA] text-[#1C2D42] flex flex-col pb-28">
       {/* Sub-header Navigation Bar (Section 10 & 26) */}
       <div className="bg-white border-b border-[#E0E6ED] px-4 sm:px-6">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3">
@@ -121,7 +127,7 @@ export const MerchantDashboardPage: React.FC = () => {
         {/* Section Tabs */}
         <div className="max-w-7xl mx-auto flex gap-4 sm:gap-8 pt-1">
           <button
-            onClick={() => setActiveTab('overview')}
+            onClick={() => selectTab('overview')}
             className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
               activeTab === 'overview'
                 ? 'border-[#00BAF2] text-[#002E6E]'
@@ -133,7 +139,7 @@ export const MerchantDashboardPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('copilot')}
+            onClick={() => selectTab('copilot')}
             className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
               activeTab === 'copilot'
                 ? 'border-[#00BAF2] text-[#002E6E]'
@@ -148,7 +154,7 @@ export const MerchantDashboardPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('inventory')}
+            onClick={() => selectTab('inventory')}
             className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
               activeTab === 'inventory'
                 ? 'border-[#00BAF2] text-[#002E6E]'
@@ -165,7 +171,7 @@ export const MerchantDashboardPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('feedback')}
+            onClick={() => selectTab('feedback')}
             className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
               activeTab === 'feedback'
                 ? 'border-[#00BAF2] text-[#002E6E]'
@@ -328,15 +334,27 @@ export const MerchantDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2: AI COPILOT — kept mounted so chat history survives tab switches */}
-        <div className={activeTab === 'copilot' ? '' : 'hidden'}>
-          <MerchantVoiceAgent
-            storeId={store.id}
-            onOpenTab={handleCopilotOpenTab}
-            queuedQuestion={queuedCopilotQuestion}
-            onQueuedQuestionHandled={handleQueuedQuestionHandled}
-          />
-        </div>
+        {/* TAB 2: Ask FinBuddy opens the same floating panel used on every tab */}
+        {activeTab === 'copilot' && (
+          <div className="paytm-card p-8 sm:p-10 bg-white text-center max-w-lg mx-auto">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00BAF2]">Aapka dukaan saathi</p>
+            <h3 className="text-2xl font-black text-[#002E6E] mt-1">FinBuddy</h3>
+            <p className="text-sm text-[#4A5568] mt-3 leading-relaxed">
+              Mic dabakar boliye ya type kijiye — Hindi, English ya Hinglish. FinBuddy har tab par neeche right corner mein rehta hai.
+            </p>
+            {botOpen ? (
+              <p className="mt-4 text-xs font-semibold text-[#00BAF2]">Chat panel is open · bottom right</p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setBotOpen(true)}
+                className="mt-5 px-4 py-2 rounded-lg bg-[#00BAF2] hover:bg-[#00a4d6] text-white text-sm font-bold shadow-sm transition"
+              >
+                Open FinBuddy
+              </button>
+            )}
+          </div>
+        )}
 
         {/* TAB 3: INVENTORY (Section 33: Operational table) */}
         {activeTab === 'inventory' && (
@@ -468,6 +486,15 @@ export const MerchantDashboardPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      <MerchantVoiceAgent
+        storeId={store.id}
+        onOpenTab={handleCopilotOpenTab}
+        queuedQuestion={queuedCopilotQuestion}
+        onQueuedQuestionHandled={handleQueuedQuestionHandled}
+        open={botOpen}
+        onOpenChange={setBotOpen}
+      />
     </div>
   );
 };
