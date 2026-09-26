@@ -69,22 +69,117 @@ class SoundFX {
     }
   }
 
-  // Speech TTS Helper (Hindi / Indian English)
-  speakText(text: string) {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      // Try finding Hindi or Indian English voice
+  // Voice Model Selector: Google TTS - Hindi 2 (Men voice)
+  getHindiMaleVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+    if (!voices || voices.length === 0) return null;
+
+    // 1. Explicit Male Hindi voices (Neural2-B, Wavenet-B, Hemant, Madhur, Male)
+    const explicitMaleHindi = voices.find(
+      (v) =>
+        (v.lang.toLowerCase().startsWith('hi') || v.lang.toLowerCase().includes('in')) &&
+        (v.name.toLowerCase().includes('male') ||
+          v.name.toLowerCase().includes('men') ||
+          v.name.toLowerCase().includes('hemant') ||
+          v.name.toLowerCase().includes('madhur') ||
+          v.name.toLowerCase().includes('neural2-b') ||
+          v.name.toLowerCase().includes('wavenet-b') ||
+          v.name.toLowerCase().includes('hindi 2') ||
+          v.name.toLowerCase().includes('hid-network'))
+    );
+    if (explicitMaleHindi) return explicitMaleHindi;
+
+    // 2. Google TTS Hindi Voice ("Google हिन्दी" / "Google Hindi")
+    const googleHindi = voices.find(
+      (v) =>
+        v.name.toLowerCase().includes('google') &&
+        (v.name.toLowerCase().includes('hindi') ||
+          v.name.includes('हिन्दी') ||
+          v.lang.toLowerCase().startsWith('hi'))
+    );
+    if (googleHindi) return googleHindi;
+
+    // 3. Fallback to any Hindi voice (will be modulated to deep male pitch)
+    const anyHindi = voices.find(
+      (v) => v.lang.toLowerCase().startsWith('hi') || v.lang.toLowerCase().includes('hi-in')
+    );
+    if (anyHindi) return anyHindi;
+
+    // 4. Fallback to Indian English male voice
+    const indianEnglishMale = voices.find(
+      (v) =>
+        v.lang.toLowerCase().includes('in') &&
+        (v.name.toLowerCase().includes('male') ||
+          v.name.toLowerCase().includes('ravi') ||
+          v.name.toLowerCase().includes('prabhat'))
+    );
+    if (indianEnglishMale) return indianEnglishMale;
+
+    return voices.find((v) => v.lang.toLowerCase().includes('in')) || voices[0] || null;
+  }
+
+  // Speech TTS Engine: Google TTS - Hindi 2 (Men Voice)
+  speakText(text: string, onEnd?: () => void) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+
+    // Clean markdown, symbols, and emojis for natural human speech
+    const cleanText = text
+      .replace(/[*_#`~]/g, '')
+      .replace(/•/g, '')
+      .replace(/₹/g, 'रुपये ')
+      .replace(/Why:/gi, 'कारण:')
+      .replace(/Recommended Action:/gi, 'सुझाव:')
+      .replace(/\n+/g, '। ');
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    // Google TTS Hindi 2 (Men Voice) tuning:
+    // Natural speaking rate and rich masculine timbre
+    utterance.lang = 'hi-IN';
+    utterance.rate = 0.94; // slightly grounded, calm pace
+
+    const applyVoice = () => {
       const voices = window.speechSynthesis.getVoices();
-      const hiVoice = voices.find((v) => v.lang.includes('hi') || v.lang.includes('IN'));
-      if (hiVoice) {
-        utterance.voice = hiVoice;
+      const voice = this.getHindiMaleVoice(voices);
+
+      if (voice) {
+        utterance.voice = voice;
+        const isAlreadyMale =
+          voice.name.toLowerCase().includes('male') ||
+          voice.name.toLowerCase().includes('hemant') ||
+          voice.name.toLowerCase().includes('madhur');
+
+        // Pitch 0.82 lowers vocal frequency to a warm, resonant masculine voice
+        utterance.pitch = isAlreadyMale ? 0.94 : 0.82;
+      } else {
+        utterance.pitch = 0.82; // Deepen default system voice
       }
+
+      if (onEnd) {
+        utterance.onend = () => onEnd();
+        utterance.onerror = () => onEnd();
+      }
+
       window.speechSynthesis.speak(utterance);
+    };
+
+    const currentVoices = window.speechSynthesis.getVoices();
+    if (currentVoices.length > 0) {
+      applyVoice();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => {
+        applyVoice();
+      };
+    }
+  }
+
+  stopSpeaking() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
     }
   }
 }
 
 export const soundFX = new SoundFX();
+

@@ -17,36 +17,52 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
   onExecuteIntent,
   storeId = 'store-awadh-01',
 }) => {
+  const [speechLang, setSpeechLang] = useState<'hi-IN' | 'en-IN'>('hi-IN');
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [statusMessage, setStatusMessage] = useState('Listening... Speak in Hindi, English, or Hinglish');
+  const [statusMessage, setStatusMessage] = useState(
+    'सुन रहे हैं... हिंदी में बोलें (उदा: "२ पेप्सी जोड़ो")'
+  );
   const [lastResult, setLastResult] = useState<VoiceIntentResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  const samplePrompts = [
-    'Do aur Pepsi add kar do',
+  const samplePromptsHindi = [
+    '२ और पेप्सी जोड़ो',
+    'एक मैगी हटाओ',
+    'टोटल कितना हुआ?',
+    'पेमेंट करो',
+  ];
+
+  const samplePromptsEnglish = [
+    'Add 2 Pepsi',
     'Ek Maggi hata do',
     'Total kitna hua?',
     'Payment generate karo',
   ];
 
+  const activePrompts = speechLang === 'hi-IN' ? samplePromptsHindi : samplePromptsEnglish;
+
   useEffect(() => {
     if (!isOpen) {
       stopListening();
+      soundFX.stopSpeaking();
       setTranscript('');
       setLastResult(null);
       return;
     }
 
-    startListening();
+    startListening(speechLang);
 
     return () => {
       stopListening();
+      soundFX.stopSpeaking();
     };
-  }, [isOpen]);
+  }, [isOpen, speechLang]);
 
-  const startListening = () => {
+  const startListening = (lang: string = speechLang) => {
+    stopListening();
+
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -57,13 +73,17 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = 'hi-IN';
+      recognition.lang = lang;
       recognition.continuous = false;
       recognition.interimResults = true;
 
       recognition.onstart = () => {
         setIsListening(true);
-        setStatusMessage('Listening to your voice command...');
+        setStatusMessage(
+          lang === 'hi-IN'
+            ? 'सुन रहे हैं... हिंदी में बोलें (उदा: "२ पेप्सी जोड़ो")'
+            : 'Listening... Speak in English or Hinglish (e.g. "Add 2 Pepsi")'
+        );
       };
 
       recognition.onresult = (event: any) => {
@@ -82,9 +102,17 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
         console.warn('Speech error:', event.error);
         setIsListening(false);
         if (event.error === 'no-speech') {
-          setStatusMessage('No speech detected. Tap mic to retry.');
+          setStatusMessage(
+            lang === 'hi-IN'
+              ? 'आवाज़ नहीं सुनाई दी। माइक दबाकर दोबारा बोलें।'
+              : 'No speech detected. Tap mic to retry.'
+          );
         } else {
-          setStatusMessage('Could not hear clearly. Try again or tap a suggestion.');
+          setStatusMessage(
+            lang === 'hi-IN'
+              ? 'स्पष्ट नहीं सुना जा सका। कृपया दोबारा बोलें।'
+              : 'Could not hear clearly. Try again or tap a suggestion.'
+          );
         }
       };
 
@@ -113,7 +141,9 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
   const handleProcessUtterance = async (text: string) => {
     if (!text.trim()) return;
     setIsProcessing(true);
-    setStatusMessage('Understanding command with AI...');
+    setStatusMessage(
+      speechLang === 'hi-IN' ? 'कमांड को समझा जा रहा है...' : 'Understanding command with AI...'
+    );
 
     try {
       const result = await parseVoiceCommand(text, storeId);
@@ -122,14 +152,16 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
 
       if (result.intent !== 'unknown') {
         soundFX.playScanBeep();
+        soundFX.speakText(result.reply);
         onExecuteIntent(result);
         setStatusMessage(result.reply);
 
-        // Auto close after 1.8 seconds on success
+        // Auto close after 2.2 seconds on success so voice finishes
         setTimeout(() => {
           onClose();
-        }, 1800);
+        }, 2200);
       } else {
+        soundFX.speakText(result.reply);
         setStatusMessage(result.reply);
       }
     } catch (e) {
@@ -152,9 +184,33 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
         </button>
 
         {/* AI Voice Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-[#002E6E] border border-sky-100 text-xs font-bold mb-5">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-[#002E6E] border border-sky-100 text-xs font-bold mb-3">
           <Sparkles className="w-3.5 h-3.5 text-[#00BAF2]" />
           <span>FinBuddy Voice Assistant</span>
+        </div>
+
+        {/* Language Selector Switch (Hindi vs Hinglish) */}
+        <div className="flex items-center bg-[#F5F7FA] p-1 rounded-lg border border-[#E0E6ED] mb-3 text-xs">
+          <button
+            onClick={() => setSpeechLang('hi-IN')}
+            className={`px-3 py-1 rounded-md font-semibold transition ${
+              speechLang === 'hi-IN'
+                ? 'bg-[#002E6E] text-white shadow-xs'
+                : 'text-[#6B7A90] hover:text-[#002E6E]'
+            }`}
+          >
+            हिंदी (Devanagari)
+          </button>
+          <button
+            onClick={() => setSpeechLang('en-IN')}
+            className={`px-3 py-1 rounded-md font-semibold transition ${
+              speechLang === 'en-IN'
+                ? 'bg-[#002E6E] text-white shadow-xs'
+                : 'text-[#6B7A90] hover:text-[#002E6E]'
+            }`}
+          >
+            English / Hinglish
+          </button>
         </div>
 
         {/* Circular Paytm Blue Microphone Button (Section 15: #00BAF2) */}
@@ -167,7 +223,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
           )}
 
           <button
-            onClick={isListening ? stopListening : startListening}
+            onClick={isListening ? stopListening : () => startListening(speechLang)}
             className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition transform active:scale-95 ${
               isListening
                 ? 'bg-[#FD5C63] text-white shadow-rose-200'
@@ -218,10 +274,12 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
         {/* Suggested Voice Commands (Section 16) */}
         <div className="w-full mt-4 pt-4 border-t border-[#E0E6ED]">
           <p className="text-[11px] font-bold text-[#6B7A90] mb-2 uppercase tracking-wider text-left">
-            Suggested commands (tap to try):
+            {speechLang === 'hi-IN'
+              ? 'सुझाए गए कमांड (क्लिक करके आज़माएं):'
+              : 'Suggested commands (tap to try):'}
           </p>
           <div className="grid grid-cols-2 gap-2">
-            {samplePrompts.map((prompt) => (
+            {activePrompts.map((prompt) => (
               <button
                 key={prompt}
                 onClick={() => {

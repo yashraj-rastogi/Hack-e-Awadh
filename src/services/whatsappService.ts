@@ -62,44 +62,35 @@ ${receiptUrl}
 _Thank you for using FinBuddy Self-Checkout! 🙏_`;
 
   try {
-    const postData = new URLSearchParams({
-      From: fromWhatsApp,
-      To: toWhatsApp,
-      Body: messageBody,
-    }).toString();
-
-    const authHeader = 'Basic ' + btoa(`${sid}:${token}`);
-
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: postData,
-      }
-    );
+    const response = await fetch('/api/send-whatsapp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        phone: cleanPhone,
+        message: messageBody,
+        receipt: receipt,
+      }),
+    });
 
     const json = await response.json();
 
-    if (response.ok && json.sid) {
+    if (json.success) {
       return {
         success: true,
-        messageSid: json.sid,
+        messageSid: json.messageSid,
       };
     } else {
-      const code = json.code;
-      const needsJoin = code === 21608 || code === 63015;
       return {
         success: false,
-        error: json.message || 'Failed to send message via Twilio.',
-        needsSandboxJoin: needsJoin,
+        error: json.error || 'Failed to send WhatsApp message.',
+        needsSandboxJoin: Boolean(json.needsSandboxJoin),
       };
     }
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Twilio network request failed.';
+    const errorMsg =
+      err instanceof Error ? err.message : 'Could not reach WhatsApp delivery service.';
     return {
       success: false,
       error: errorMsg,

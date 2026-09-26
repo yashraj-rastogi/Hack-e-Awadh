@@ -17,6 +17,7 @@ import {
   ExternalLink,
   AlertTriangle,
   Lightbulb,
+  Square,
 } from 'lucide-react';
 import {
   getStore,
@@ -103,10 +104,22 @@ export const MerchantDashboardPage: React.FC = () => {
     }
   };
 
-  const handleSpeakText = (text: string) => {
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+  const handleSpeakText = (msgId: string, text: string) => {
+    if (speakingMessageId === msgId) {
+      soundFX.stopSpeaking();
+      setSpeakingMessageId(null);
+      setIsSpeaking(false);
+      return;
+    }
+    soundFX.stopSpeaking();
+    setSpeakingMessageId(msgId);
     setIsSpeaking(true);
-    soundFX.speakText(text);
-    setTimeout(() => setIsSpeaking(false), 4000);
+    soundFX.speakText(text, () => {
+      setSpeakingMessageId(null);
+      setIsSpeaking(false);
+    });
   };
 
   const handleResetData = () => {
@@ -473,16 +486,34 @@ export const MerchantDashboardPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* TTS Speak Button (Section 30) */}
+                      {/* TTS Speak Button: Google TTS - Hindi 2 (Men voice) */}
                       {isAssistant && (
                         <div className="mt-2.5 flex justify-end">
                           <button
-                            onClick={() => handleSpeakText(msg.text)}
-                            className="text-[11px] text-[#6B7A90] hover:text-[#00BAF2] flex items-center gap-1 font-semibold transition"
-                            title="Speak answer out loud"
+                            onClick={() => handleSpeakText(msg.id, msg.text)}
+                            className={`text-[11px] flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-md transition border ${
+                              speakingMessageId === msg.id
+                                ? 'bg-sky-50 text-[#002E6E] border-[#00BAF2]'
+                                : 'text-[#6B7A90] hover:text-[#00BAF2] border-transparent hover:border-[#E0E6ED] hover:bg-[#F5F7FA]'
+                            }`}
+                            title="Speak answer with Google TTS Hindi 2 (Men voice)"
                           >
-                            <Volume2 className="w-3.5 h-3.5" />
-                            <span>Listen in Hindi/English</span>
+                            {speakingMessageId === msg.id ? (
+                              <>
+                                <Square className="w-3 h-3 fill-[#00BAF2] text-[#00BAF2]" />
+                                <span className="text-[#002E6E] font-bold">Stop Audio</span>
+                                <span className="flex gap-0.5 items-center ml-1">
+                                  <span className="w-0.5 h-2 bg-[#00BAF2] animate-bounce" />
+                                  <span className="w-0.5 h-3 bg-[#002E6E] animate-bounce delay-100" />
+                                  <span className="w-0.5 h-2 bg-[#00BAF2] animate-bounce delay-200" />
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="w-3.5 h-3.5 text-[#00BAF2]" />
+                                <span>Listen (Google TTS - Hindi 2 Men)</span>
+                              </>
+                            )}
                           </button>
                         </div>
                       )}

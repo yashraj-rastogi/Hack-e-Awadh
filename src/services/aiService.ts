@@ -15,14 +15,104 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 // -------------------------------------------------------------
 // 1. Voice Intent Parser (English / Hindi / Hinglish)
 // -------------------------------------------------------------
+// Known catalog products with Hindi and English keyword mappings
+const KNOWN_CATALOG_PRODUCTS = [
+  { name: 'Pepsi', keys: ['pepsi', 'पेप्सी', 'पेप्सि'] },
+  { name: 'Maggi', keys: ['maggi', 'मैगी', 'मेगी', 'नूडल्स', 'नूडल'] },
+  { name: 'KitKat', keys: ['kitkat', 'kit kat', 'किटकैट', 'किटकेट', 'किट कैट'] },
+  { name: 'Thums Up', keys: ['thums up', 'thumbs up', 'थम्स अप', 'थम्सअप', 'थम्स'] },
+  { name: "Lay's", keys: ['lays', 'lay', 'chips', 'चिप्स', 'चिप', 'लेज', 'लेज़'] },
+  { name: 'Amul Milk', keys: ['amul', 'milk', 'doodh', 'दूध', 'अमुल', 'अमूल'] },
+  { name: 'Parle-G', keys: ['parle', 'parleg', 'parle-g', 'biscuit', 'बिस्कुट', 'बिस्किट', 'पारले'] },
+  { name: 'Britannia Good Day', keys: ['good day', 'goodday', 'गुड डे', 'गुडडे'] },
+  { name: 'Red Bull', keys: ['red bull', 'redbull', 'रेड बुल', 'रेडबुल', 'रेडबूल'] },
+  { name: 'Kurkure', keys: ['kurkure', 'कुरकुरे', 'कुरकुरा'] },
+  { name: 'Nescafe', keys: ['nescafe', 'coffee', 'कॉफी', 'कॉफ़ी', 'नेस्कैफे'] },
+  { name: 'Tata Salt', keys: ['tata salt', 'salt', 'namak', 'नमक', 'टाटा नमक'] },
+  {
+    name: 'Cadbury Dairy Milk',
+    keys: ['dairy milk', 'silk', 'chocolate', 'डेयरी मिल्क', 'सिल्क', 'चॉकलेट', 'डेयरीमिल्क'],
+  },
+  {
+    name: "Haldiram's Bhujia",
+    keys: ['bhujia', 'bhoojia', 'haldiram', 'भुजिया', 'भुजिया हल्दीराम', 'हल्दीराम'],
+  },
+  { name: 'Fortune Oil', keys: ['fortune', 'oil', 'tel', 'तेल', 'फॉर्च्यून', 'फार्च्यून'] },
+];
+
+function extractQuantity(clean: string): number {
+  // Check if "एक" or "1" or "१" or "one" is specified
+  const isOne =
+    /(^|\s)(एक|ek|one|1|१)(\s|$)/i.test(clean) ||
+    clean.startsWith('एक') ||
+    clean.startsWith('१');
+
+  // Devanagari numerals
+  const devanagariDigits: Record<string, number> = {
+    '२': 2,
+    '३': 3,
+    '४': 4,
+    '५': 5,
+    '६': 6,
+    '७': 7,
+    '८': 8,
+    '९': 9,
+    '१०': 10,
+  };
+  for (const [d, val] of Object.entries(devanagariDigits)) {
+    if (clean.includes(d)) return val;
+  }
+
+  // Western digits > 1
+  const numMatch = clean.match(/\b([2-9]|10)\b/);
+  if (numMatch) return parseInt(numMatch[1], 10);
+
+  // Check 3, 4, 5, 6 first
+  if (/(^|\s)(तीन|teen|three|3|३)(\s|$)/i.test(clean) || clean.includes('तीन')) return 3;
+  if (/(^|\s)(चार|chaar|four|4|४)(\s|$)/i.test(clean) || clean.includes('चार')) return 4;
+  if (
+    /(^|\s)(पांच|पाँच|paanch|five|5|५)(\s|$)/i.test(clean) ||
+    clean.includes('पांच') ||
+    clean.includes('पाँच')
+  )
+    return 5;
+  if (/(^|\s)(छह|छः|chhe|six|6|६)(\s|$)/i.test(clean) || clean.includes('छह')) return 6;
+
+  // Check if "दो" or "do" is used as auxiliary verb at end (e.g. "हटा दो", "कर दो", "दे दो", "hata do", "kar do")
+  const isVerbSuffixDo =
+    /(हटा\s*दो|कर\s*दो|दे\s*दो|डाल\s*दो|ऐड\s*दो|जोड़\s*दो|hata\s*do|kar\s*do|de\s*do|dal\s*do|add\s*do)/i.test(
+      clean
+    );
+
+  if (isOne) return 1;
+
+  // Check 2: if it has "दो" or "do" or "two", and it's either at the beginning, or NOT just a verb suffix
+  if (
+    clean.startsWith('दो') ||
+    clean.startsWith('do ') ||
+    clean.includes('दो और') ||
+    clean.includes('do aur') ||
+    (/(^|\s)(दो|two)(\s|$)/i.test(clean) && !isVerbSuffixDo)
+  ) {
+    return 2;
+  }
+
+  // If "do" is in the text and NOT part of verb suffix
+  if (/\b(do|two)\b/i.test(clean) && !isVerbSuffixDo) {
+    return 2;
+  }
+
+  return 1;
+}
+
 export async function parseVoiceCommand(
   utterance: string,
   _storeId: string = 'store-awadh-01'
 ): Promise<VoiceIntentResult> {
   const clean = utterance.trim().toLowerCase();
 
-  // If Gemini API Key is available, use Google Gemini
-  if (GEMINI_API_KEY && GEMINI_API_KEY.length > 10) {
+  // If valid Google AI Studio API Key is available, try Gemini
+  if (GEMINI_API_KEY && GEMINI_API_KEY.length > 10 && GEMINI_API_KEY.startsWith('AIza')) {
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -35,7 +125,8 @@ export async function parseVoiceCommand(
                 role: 'user',
                 parts: [
                   {
-                    text: `You are FinBuddy Checkout Voice Command Parser. The user speaks English, Hindi, or Hinglish.
+                    text: `You are FinBuddy Checkout Voice Command Parser. The user speaks Hindi (Devanagari script), Hinglish, or English.
+Available products: Pepsi, Maggi, KitKat, Thums Up, Lay's, Amul Milk, Parle-G, Britannia Good Day, Red Bull, Kurkure, Nescafe, Tata Salt, Cadbury Dairy Milk, Haldiram's Bhujia, Fortune Oil.
 Return JSON ONLY matching:
 {
   "intent": "add_item" | "remove_item" | "remove_last" | "get_total" | "clear_cart" | "start_payment" | "unknown",
@@ -74,21 +165,29 @@ User said: "${utterance}"`,
 }
 
 function parseVoiceCommandLocal(clean: string): VoiceIntentResult {
-  // Check for Payment Intent
-  if (
-    clean.includes('pay') ||
-    clean.includes('checkout') ||
-    clean.includes('payment') ||
+  const isHindi = /[\u0900-\u097F]/.test(clean);
+
+  // Check for Payment Intent (strict word boundaries / explicit phrases to avoid matching "पे" in "पेप्सी")
+  const isPayment =
+    /\b(pay|checkout|payment)\b/i.test(clean) ||
+    clean.includes('पेमेंट') ||
+    clean.includes('भुगतान') ||
+    clean.includes('बिल बना') ||
+    clean.includes('बिल भरो') ||
+    clean.includes('पैसे दे') ||
     clean.includes('paise de') ||
-    clean.includes('bill bana') ||
-    clean.includes('bharo')
-  ) {
+    clean.includes('पे करो') ||
+    clean.includes('पे करना');
+
+  if (isPayment) {
     return {
       intent: 'start_payment',
       productQuery: null,
       quantity: 1,
       requiresConfirmation: true,
-      reply: 'Starting payment. Please confirm your bill amount.',
+      reply: isHindi
+        ? 'पेमेंट शुरू किया जा रहा है। कृपया बिल राशि की पुष्टि करें।'
+        : 'Starting payment. Please confirm your bill amount.',
     };
   }
 
@@ -97,14 +196,23 @@ function parseVoiceCommandLocal(clean: string): VoiceIntentResult {
     clean.includes('total') ||
     clean.includes('kitna hua') ||
     clean.includes('kitne paise') ||
-    clean.includes('bill kitna')
+    clean.includes('bill kitna') ||
+    clean.includes('how much') ||
+    clean.includes('टोटल') ||
+    clean.includes('कुल') ||
+    clean.includes('कितना हुआ') ||
+    clean.includes('कितने पैसे') ||
+    clean.includes('बिल बताओ') ||
+    clean.includes('कितना बिल')
   ) {
     return {
       intent: 'get_total',
       productQuery: null,
       quantity: 1,
       requiresConfirmation: false,
-      reply: 'Checking current cart total.',
+      reply: isHindi
+        ? 'कार्ट का कुल बिल चेक किया जा रहा है।'
+        : 'Checking current cart total.',
     };
   }
 
@@ -113,33 +221,24 @@ function parseVoiceCommandLocal(clean: string): VoiceIntentResult {
     clean.includes('clear') ||
     clean.includes('sab hata') ||
     clean.includes('khali kar') ||
-    clean.includes('empty cart')
+    clean.includes('empty cart') ||
+    clean.includes('खाली करो') ||
+    clean.includes('सब हटाओ') ||
+    clean.includes('साफ करो') ||
+    clean.includes('कार्ट खाली')
   ) {
     return {
       intent: 'clear_cart',
       productQuery: null,
       quantity: 0,
       requiresConfirmation: true,
-      reply: 'Are you sure you want to clear your entire cart?',
+      reply: isHindi
+        ? 'क्या आप पूरा कार्ट खाली करना चाहते हैं?'
+        : 'Are you sure you want to clear your entire cart?',
     };
   }
 
-  // Detect Quantity (Hindi & English numbers)
-  let quantity = 1;
-  const numMatch = clean.match(/\b(\d+)\b/);
-  if (numMatch) {
-    quantity = parseInt(numMatch[1], 10);
-  } else if (clean.includes('do') || clean.includes('two') || clean.includes('2')) {
-    quantity = 2;
-  } else if (clean.includes('teen') || clean.includes('three') || clean.includes('3')) {
-    quantity = 3;
-  } else if (clean.includes('chaar') || clean.includes('four') || clean.includes('4')) {
-    quantity = 4;
-  } else if (clean.includes('paanch') || clean.includes('five') || clean.includes('5')) {
-    quantity = 5;
-  } else if (clean.includes('ek') || clean.includes('one') || clean.includes('1')) {
-    quantity = 1;
-  }
+  const quantity = extractQuantity(clean);
 
   // Check for Remove Intent
   const isRemove =
@@ -148,51 +247,47 @@ function parseVoiceCommandLocal(clean: string): VoiceIntentResult {
     clean.includes('delete') ||
     clean.includes('minus') ||
     clean.includes('kam kar') ||
-    clean.includes('nikal');
+    clean.includes('nikal') ||
+    clean.includes('हटाओ') ||
+    clean.includes('हटा') ||
+    clean.includes('कम करो') ||
+    clean.includes('निकालो') ||
+    clean.includes('निकाल') ||
+    clean.includes('डिलीट') ||
+    clean.includes('माइनस');
 
-  // Identify known product keywords
-  const knownKeywords = [
-    { key: 'pepsi', name: 'Pepsi' },
-    { key: 'maggi', name: 'Maggi' },
-    { key: 'kitkat', name: 'KitKat' },
-    { key: 'thums up', name: 'Thums Up' },
-    { key: 'lays', name: "Lay's" },
-    { key: 'chips', name: "Lay's" },
-    { key: 'milk', name: 'Amul Milk' },
-    { key: 'doodh', name: 'Amul Milk' },
-    { key: 'amul', name: 'Amul Milk' },
-    { key: 'biscuit', name: 'Parle-G' },
-    { key: 'parle', name: 'Parle-G' },
-    { key: 'good day', name: 'Britannia Good Day' },
-    { key: 'red bull', name: 'Red Bull' },
-    { key: 'kurkure', name: 'Kurkure' },
-    { key: 'coffee', name: 'Nescafe' },
-    { key: 'salt', name: 'Tata Salt' },
-    { key: 'namak', name: 'Tata Salt' },
-    { key: 'chocolate', name: 'Cadbury Dairy Milk' },
-    { key: 'dairy milk', name: 'Cadbury Dairy Milk' },
-    { key: 'silk', name: 'Cadbury Dairy Milk' },
-    { key: 'bhujia', name: "Haldiram's Bhujia" },
-  ];
+  // Match Product in Catalog
+  let matchedProduct: { name: string; keys: string[] } | null = null;
+  for (const prod of KNOWN_CATALOG_PRODUCTS) {
+    for (const key of prod.keys) {
+      if (clean.includes(key.toLowerCase())) {
+        matchedProduct = prod;
+        break;
+      }
+    }
+    if (matchedProduct) break;
+  }
 
-  const matched = knownKeywords.find((kw) => clean.includes(kw.key));
-
-  if (matched) {
+  if (matchedProduct) {
     if (isRemove) {
       return {
         intent: 'remove_item',
-        productQuery: matched.name,
+        productQuery: matchedProduct.name,
         quantity,
         requiresConfirmation: false,
-        reply: `Removed ${quantity} ${matched.name} from your cart.`,
+        reply: isHindi
+          ? `${quantity} ${matchedProduct.name} कार्ट से हटा दिया गया।`
+          : `Removed ${quantity} ${matchedProduct.name} from your cart.`,
       };
     } else {
       return {
         intent: 'add_item',
-        productQuery: matched.name,
+        productQuery: matchedProduct.name,
         quantity,
         requiresConfirmation: false,
-        reply: `Added ${quantity} ${matched.name} to your cart.`,
+        reply: isHindi
+          ? `${quantity} ${matchedProduct.name} कार्ट में जोड़ दिया गया।`
+          : `Added ${quantity} ${matchedProduct.name} to your cart.`,
       };
     }
   }
@@ -204,7 +299,9 @@ function parseVoiceCommandLocal(clean: string): VoiceIntentResult {
       productQuery: null,
       quantity: 1,
       requiresConfirmation: false,
-      reply: 'Removing the last added item from your cart.',
+      reply: isHindi
+        ? 'कार्ट से पिछला आइटम हटाया जा रहा है।'
+        : 'Removing the last added item from your cart.',
     };
   }
 
@@ -213,7 +310,9 @@ function parseVoiceCommandLocal(clean: string): VoiceIntentResult {
     productQuery: clean,
     quantity: 1,
     requiresConfirmation: false,
-    reply: "I couldn't identify the product. Please try saying 'Add 2 Pepsi' or use the scanner.",
+    reply: isHindi
+      ? "माफ़ कीजिये, प्रोडक्ट समझ नहीं आया। कृपया '२ पेप्सी जोड़ो' बोलें या स्कैनर का उपयोग करें।"
+      : "I couldn't identify the product. Please try saying 'Add 2 Pepsi' or use the scanner.",
   };
 }
 

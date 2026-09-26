@@ -15,30 +15,45 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onScan, onError, a
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerId = 'finbuddy-qr-reader';
-  const isMountedRef = useRef(true);
   const lastScannedTime = useRef<number>(0);
+  const isStartingRef = useRef<boolean>(false);
 
   useEffect(() => {
-    isMountedRef.current = true;
+    let isCurrent = true;
 
     async function startScanner() {
       if (!active) return;
+      if (isStartingRef.current) return;
+      isStartingRef.current = true;
 
       try {
         setErrorMessage(null);
+
+        // Ensure container exists in DOM
+        const el = document.getElementById(containerId);
+        if (!el) {
+          isStartingRef.current = false;
+          return;
+        }
+
         if (!scannerRef.current) {
           scannerRef.current = new Html5Qrcode(containerId);
         }
 
         const cameras = await Html5Qrcode.getCameras();
         if (!cameras || cameras.length === 0) {
-          setHasPermission(false);
-          setErrorMessage('No camera detected on this device.');
-          onError?.('No camera detected on this device.');
+          if (isCurrent) {
+            setHasPermission(false);
+            setErrorMessage('No camera detected on this device.');
+            onError?.('No camera detected on this device.');
+          }
+          isStartingRef.current = false;
           return;
         }
 
-        setHasPermission(true);
+        if (isCurrent) {
+          setHasPermission(true);
+        }
 
         const config = {
           fps: 15,
@@ -46,41 +61,56 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onScan, onError, a
           aspectRatio: 1.333,
         };
 
-        await scannerRef.current.start(
-          { facingMode: 'environment' },
-          config,
-          (decodedText) => {
-            const now = Date.now();
-            if (now - lastScannedTime.current < 1500) return;
-            lastScannedTime.current = now;
+        // Check if scanner was already started or unmounted
+        if (scannerRef.current && !scannerRef.current.isScanning) {
+          await scannerRef.current.start(
+            { facingMode: 'environment' },
+            config,
+            (decodedText) => {
+              const now = Date.now();
+              if (now - lastScannedTime.current < 1500) return;
+              lastScannedTime.current = now;
 
-            soundFX.playScanBeep();
-            onScan(decodedText);
-          },
-          () => {}
-        );
+              soundFX.playScanBeep();
+              onScan(decodedText);
+            },
+            () => {}
+          );
 
-        if (isMountedRef.current) {
-          setIsScanning(true);
+          if (isCurrent) {
+            setIsScanning(true);
+          }
         }
       } catch (err: unknown) {
-        console.warn('Camera start error:', err);
-        const msg = err instanceof Error ? err.message : 'Camera access was blocked or is unavailable.';
-        setHasPermission(false);
-        setErrorMessage(msg);
-        onError?.(msg);
+        if (isCurrent) {
+          const msg = err instanceof Error ? err.message : 'Camera access error';
+          if (!msg.includes('already under transition')) {
+            console.warn('Camera notice:', msg);
+            setHasPermission(false);
+            setErrorMessage(msg);
+            onError?.(msg);
+          }
+        }
+      } finally {
+        isStartingRef.current = false;
       }
     }
 
     startScanner();
 
     return () => {
-      isMountedRef.current = false;
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current
-          .stop()
-          .then(() => scannerRef.current?.clear())
-          .catch((e) => console.warn('Scanner stop error:', e));
+      isCurrent = false;
+      if (scannerRef.current) {
+        if (scannerRef.current.isScanning) {
+          scannerRef.current
+            .stop()
+            .then(() => {
+              try {
+                scannerRef.current?.clear();
+              } catch (e) {}
+            })
+            .catch(() => {});
+        }
       }
     };
   }, [active, onScan, onError]);
