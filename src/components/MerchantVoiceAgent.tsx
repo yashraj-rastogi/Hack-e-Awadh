@@ -34,6 +34,9 @@ interface MerchantVoiceAgentProps {
   /** A question queued from elsewhere on the dashboard (e.g. an insight card). */
   queuedQuestion?: { id: number; text: string } | null;
   onQueuedQuestionHandled?: () => void;
+  /** Floating panel visibility. The launcher stays on screen either way. */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 const SUGGESTED_PROMPTS = [
@@ -82,12 +85,14 @@ const ROBOT_STATUS: Record<RobotMode, { title: string; hint: string }> = {
   speaking: { title: 'Bol raha hoon', hint: 'Jawab suniye, ya Stop dabayein' },
 };
 
-function ShopkeeperRobot({ mode }: { mode: RobotMode }) {
+function ShopkeeperRobot({ mode, size = 'panel' }: { mode: RobotMode; size?: 'panel' | 'fab' }) {
   const listening = mode === 'listening';
   const thinking = mode === 'thinking';
   const speaking = mode === 'speaking';
+  const box = size === 'fab' ? 'w-16 h-16' : 'w-14 h-14';
+  const svg = size === 'fab' ? 'w-11 h-11' : 'w-10 h-10';
   return (
-    <div className="relative w-[7.5rem] h-[7.5rem] shrink-0" aria-hidden>
+    <div className={`relative shrink-0 ${box}`} aria-hidden>
       {(listening || speaking) && (
         <>
           <span className="absolute inset-0 rounded-full border-2 border-[#00BAF2] robot-ring" />
@@ -96,11 +101,11 @@ function ShopkeeperRobot({ mode }: { mode: RobotMode }) {
       )}
       {thinking && <span className="absolute -inset-1 rounded-full border-2 border-dashed border-[#00BAF2] robot-orbit" />}
       <div
-        className={`absolute inset-1 rounded-full bg-gradient-to-b from-[#00BAF2] to-[#002E6E] shadow-[0_8px_24px_rgba(0,186,242,0.35)] flex items-center justify-center ${
+        className={`absolute inset-0.5 rounded-full bg-gradient-to-b from-[#00BAF2] to-[#002E6E] shadow-[0_8px_24px_rgba(0,186,242,0.35)] flex items-center justify-center ${
           mode === 'idle' ? 'robot-float' : ''
         }`}
       >
-        <svg viewBox="0 0 80 80" className="w-[4.5rem] h-[4.5rem]">
+        <svg viewBox="0 0 80 80" className={svg}>
           <line x1="40" y1="13" x2="40" y2="7" stroke="#E8F7FF" strokeWidth="2" strokeLinecap="round" />
           <circle cx="40" cy="5.5" r="3" fill={speaking ? '#7CFFB2' : '#E8F7FF'} />
           <rect x="10" y="30" width="7" height="12" rx="3" fill="#D7F3FC" />
@@ -145,6 +150,8 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
   onOpenTab,
   queuedQuestion,
   onQueuedQuestionHandled,
+  open,
+  onOpenChange,
 }) => {
   const [messages, setMessages] = useState<CopilotMessage[]>([WELCOME]);
   const [input, setInput] = useState('');
@@ -203,6 +210,11 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
     stopSpeaking();
     setSpeakingId(null);
     setAudioLive(false);
+  };
+
+  const closePanel = () => {
+    sessionRef.current?.cancel();
+    onOpenChange(false);
   };
 
   const askQuestion = useCallback(
@@ -312,22 +324,28 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
   const status = ROBOT_STATUS[robotMode];
 
   return (
-    <div className="paytm-card p-4 sm:p-6 bg-white flex flex-col h-[720px] shadow-[0_2px_12px_rgba(0,46,110,0.08)]">
+    <>
+    {open && (
+    <div
+      id="finbuddy-panel"
+      role="dialog"
+      aria-label="FinBuddy"
+      className="paytm-card fixed z-[60] right-4 bottom-[7.75rem] flex flex-col overflow-hidden w-[min(380px,calc(100vw-2rem))] h-[min(560px,70vh)] p-3 sm:p-4 bg-white shadow-[0_8px_24px_rgba(0,46,110,0.16)]"
+    >
       {/* Companion */}
-      <div className="border-b border-[#E0E6ED] pb-4 mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-4 min-w-0">
+      <div className="border-b border-[#E0E6ED] pb-3 mb-2 shrink-0 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
           <ShopkeeperRobot mode={robotMode} />
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#00BAF2]">Aapka dukaan saathi</p>
-            <h3 className="text-lg font-black text-[#002E6E] leading-tight">FinBuddy</h3>
-            <p className="text-base font-bold text-[#002E6E] mt-1" role="status">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#00BAF2]">Aapka dukaan saathi</p>
+            <h3 className="text-base font-black text-[#002E6E] leading-tight">FinBuddy</h3>
+            <p className="text-xs font-bold text-[#002E6E] truncate" role="status" title={status.hint}>
               {status.title}
             </p>
-            <p className="text-xs text-[#6B7A90] mt-0.5">{status.hint}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {speakingId && (
             <button
               onClick={handleStopSpeaking}
@@ -374,21 +392,30 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
               ))}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={closePanel}
+            className="w-8 h-8 rounded-full border border-[#E0E6ED] bg-white text-[#6B7A90] hover:text-[#002E6E] hover:bg-[#F5F7FA] flex items-center justify-center transition"
+            aria-label="Close FinBuddy"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
       {/* Suggested chips */}
-      <div className="mb-3">
-        <span className="text-[11px] font-bold text-[#6B7A90] block mb-2 uppercase tracking-wider">
+      <div className="mb-2 shrink-0">
+        <span className="text-[10px] font-bold text-[#6B7A90] block mb-1.5 uppercase tracking-wider">
           Try asking · पूछ कर देखिए
         </span>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
           {SUGGESTED_PROMPTS.map((prompt) => (
             <button
               key={prompt}
               onClick={() => askQuestion(prompt)}
               disabled={loading || isListening || isProcessing}
-              className="px-3 py-1.5 rounded-full bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] hover:text-[#00BAF2] text-xs font-semibold border border-[#E0E6ED] transition disabled:opacity-50"
+              className="shrink-0 px-3 py-1.5 rounded-full bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] hover:text-[#00BAF2] text-xs font-semibold border border-[#E0E6ED] transition disabled:opacity-50"
             >
               {prompt}
             </button>
@@ -397,7 +424,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
       </div>
 
       {/* Chat stream */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 pr-1 mb-3">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 mb-2">
         {messages.map((msg) => {
           const isAssistant = msg.sender === 'assistant';
           const actionState = actionStates[msg.id];
@@ -405,7 +432,7 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
           return (
             <div key={msg.id} className={`flex flex-col ${isAssistant ? 'items-start' : 'items-end'}`}>
               <div
-                className={`max-w-xl rounded-2xl p-4 text-sm leading-relaxed shadow-sm ${
+                className={`max-w-[92%] rounded-2xl p-3 text-sm leading-relaxed shadow-sm ${
                   isAssistant
                     ? 'bg-[#F9FBFE] border border-[#E0E6ED] text-[#1C2D42] rounded-tl-sm'
                     : 'bg-[#00BAF2] text-white font-semibold rounded-tr-sm'
@@ -579,14 +606,14 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
           e.preventDefault();
           askQuestion(input);
         }}
-        className="flex items-center gap-2 pt-3 border-t border-[#E0E6ED]"
+        className="flex items-center gap-2 pt-3 border-t border-[#E0E6ED] shrink-0"
       >
         <div className="flex flex-col items-center shrink-0">
         <button
           type="button"
           onClick={toggleMic}
           disabled={loading || isProcessing}
-          className={`relative w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-white shadow-md transition disabled:opacity-50 ${
+          className={`relative w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-white shadow-md transition disabled:opacity-50 ${
             isListening ? 'bg-[#FD5C63] hover:bg-rose-500' : 'bg-[#002E6E] hover:bg-[#00408f]'
           }`}
           title={isListening ? 'Ruko' : 'Mic dabao aur bolo'}
@@ -620,5 +647,24 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
         </button>
       </form>
     </div>
+    )}
+
+    <div className="fixed z-[70] right-4 bottom-4 flex flex-col items-center gap-1">
+      <button
+        type="button"
+        onClick={() => (open ? closePanel() : onOpenChange(true))}
+        className="relative rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00BAF2] focus-visible:ring-offset-2"
+        aria-expanded={open}
+        aria-controls="finbuddy-panel"
+        aria-label={open ? 'Close FinBuddy' : `Open FinBuddy. ${status.title}`}
+        title={status.title}
+      >
+        <ShopkeeperRobot mode={robotMode} size="fab" />
+      </button>
+      <span className="px-2 py-0.5 rounded-full bg-white border border-[#E0E6ED] text-[10px] font-black tracking-wide text-[#002E6E] shadow-[0_2px_8px_rgba(0,46,110,0.12)]">
+        FinBuddy
+      </span>
+    </div>
+    </>
   );
 };
