@@ -62,7 +62,6 @@ export const MerchantDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     'overview' | 'inventory' | 'analytics' | 'feedback' | 'copilot' | 'settings'
   >('overview');
-
   const [botOpen, setBotOpen] = useState(false);
   const [queuedCopilotQuestion, setQueuedCopilotQuestion] = useState<{ id: number; text: string } | null>(null);
   const [inventorySearch, setInventorySearch] = useState('');
@@ -135,9 +134,7 @@ export const MerchantDashboardPage: React.FC = () => {
     setQueuedCopilotQuestion({ id: Date.now(), text: q });
   };
 
-  const selectTab = (
-    tab: 'overview' | 'inventory' | 'analytics' | 'feedback' | 'copilot' | 'settings'
-  ) => {
+  const selectTab = (tab: 'overview' | 'inventory' | 'analytics' | 'feedback' | 'copilot' | 'settings') => {
     setActiveTab(tab);
     if (tab === 'copilot') setBotOpen(true);
   };
