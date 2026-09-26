@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinBuddy — Demo Product Barcodes Sheet</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#F5F7FA] text-[#1C2D42] p-6 sm:p-10 font-sans">
+  <div class="max-w-6xl mx-auto">
+    <div class="border-b border-[#E0E6ED] pb-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-[#002E6E] border border-sky-100">
+            Hack-e-Awadh 2026 · PS-02: Merchant Growth AI
+          </span>
+          <span class="text-xs text-[#6B7A90]">Team Byte-Bandits</span>
+        </div>
+        <h1 class="text-3xl font-black text-[#002E6E] tracking-tight">FinBuddy Barcodes Sheet</h1>
+        <p class="text-[#6B7A90] text-sm mt-1">
+          Point your phone camera or webcam at any barcode below to test live checkout scanning.
+        </p>
+      </div>
+      <button onclick="window.print()" class="px-4 py-2 bg-[#00BAF2] hover:bg-[#00a4d6] text-white text-xs font-bold rounded-lg shadow-sm transition">
+        Print Barcode Cards
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="barcode-grid">
+      <!-- Injected by script -->
+    </div>
+  </div>
+
+  <script>
+    const products = [
+      { name: "Pepsi 500ml Pet Bottle", code: "8901491101837", price: "₹40.00", category: "Beverages", tag: "Fast Seller" },
+      { name: "Maggi 2-Min Masala Noodles", code: "8901058852332", price: "₹14.00", category: "Instant Food", tag: "Low Stock (3 left)" },
+      { name: "Nestle KitKat 4 Finger", code: "8901058859706", price: "₹30.00", category: "Confectionery", tag: "Snack Combo" },
+      { name: "Thums Up Charged 500ml", code: "8901030018541", price: "₹40.00", category: "Beverages", tag: "Evening Rush" },
+      { name: "Lay's India's Magic Masala", code: "8901491501019", price: "₹20.00", category: "Snacks", tag: "High Margin" },
+      { name: "Amul Taaza Toned Milk 500ml", code: "8901262010053", price: "₹27.00", category: "Dairy", tag: "Daily Essential" },
+      { name: "Parle-G Gold Biscuits 100g", code: "8901719101037", price: "₹10.00", category: "Snacks", tag: "Declining Trend" },
+      { name: "Britannia Good Day Butter", code: "8901063012721", price: "₹25.00", category: "Snacks", tag: "Offer Target" },
+      { name: "Red Bull Energy Drink 250ml", code: "8901030383830", price: "₹125.00", category: "Beverages", tag: "Premium" },
+      { name: "Kurkure Masala Munch 80g", code: "8901491361118", price: "₹20.00", category: "Snacks", tag: "Impulse Buy" },
+      { name: "Tata Salt Vacuum Evaporated", code: "8904004400588", price: "₹28.00", category: "Staples", tag: "Staple" },
+      { name: "Cadbury Dairy Milk Silk 60g", code: "8901058863116", price: "₹80.00", category: "Confectionery", tag: "Popular" }
+    ];
+
+    const grid = document.getElementById('barcode-grid');
+
+    products.forEach((p, idx) => {
+      const card = document.createElement('div');
+      card.className = "bg-white border border-[#E0E6ED] rounded-xl p-5 flex flex-col justify-between shadow-sm hover:border-[#00BAF2] transition";
+      card.innerHTML = `
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs uppercase font-bold tracking-wider text-[#00BAF2]">${p.category}</span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded ${p.tag.includes('Low Stock') ? 'bg-rose-50 text-[#FD5C63] border border-rose-100' : 'bg-[#F5F7FA] text-[#002E6E]'}">${p.tag}</span>
+          </div>
+          <h3 class="font-bold text-[#002E6E] text-sm leading-snug mb-1">${p.name}</h3>
+          <p class="text-[#002E6E] font-black text-lg">${p.price}</p>
+        </div>
+        <div class="bg-[#F9FBFE] border border-[#E0E6ED] p-3 rounded-lg mt-4 flex flex-col items-center justify-center">
+          <svg id="barcode-${idx}" class="w-full h-18"></svg>
+        </div>
+      `;
+      grid.appendChild(card);
+
+      setTimeout(() => {
+        JsBarcode(`#barcode-${idx}`, p.code, {
+          format: "EAN13",
+          lineColor: "#002E6E",
+          width: 2,
+          height: 50,
+          displayValue: true,
+          fontSize: 13,
+          margin: 0
+        });
+      }, 50);
+    });
+  </script>
+</body>
+</html>

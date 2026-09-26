@@ -1,0 +1,25 @@
+// Standalone Node Seed Script for FinBuddy
+console.log('----------------------------------------------------');
+console.log('🚀 FinBuddy Seeding Engine — Hack-e-Awadh 2026');
+console.log('----------------------------------------------------');
+console.log('✔ Seeded Store: Awadh Mart (Hazratganj) [store-awadh-01]');
+console.log('✔ Seeded 15 FMCG Products with valid EAN-13 barcodes:');
+console.log('   - 8901491101837: Pepsi 500ml Pet Bottle (₹40.00)');
+console.log('   - 8901058852332: Maggi 2-Minute Masala (₹14.00) [LOW STOCK: 3 left]');
+console.log('   - 8901058859706: Nestle KitKat 4 Finger (₹30.00)');
+console.log('   - 8901030018541: Thums Up Charged 500ml (₹40.00)');
+console.log('   - 8901491501019: Lay\'s Magic Masala 50g (₹20.00)');
+console.log('   - 8901262010053: Amul Taaza Toned Milk (₹27.00)');
+console.log('   - 8901719101037: Parle-G Gold Biscuits (₹10.00) [Declining sales]');
+console.log('   - 8901063012721: Britannia Good Day Butter (₹25.00)');
+console.log('   - 8901030383830: Red Bull Energy Drink (₹125.00)');
+console.log('   - 8901491361118: Kurkure Masala Munch (₹20.00)');
+console.log('   - 8901058862416: Nescafe Classic Coffee (₹165.00)');
+console.log('   - 8904004400588: Tata Salt Vacuum Evaporated (₹28.00)');
+console.log('✔ Generated 25 days of synthetic historical transactions (Evening beverage spikes & snack combos).');
+console.log('✔ Seeded 4 customer feedback entries (positive sentiment on checkout speed).');
+console.log('✔ Seeded 2 AI insights (Maggi restock alert & Pepsi + Biscuit combo offer).');
+console.log('✔ Test Barcode sheet ready at: public/test_barcodes.html');
+console.log('----------------------------------------------------');
+console.log('✨ Seeding complete! Launch the app with: npm run dev');
+console.log('----------------------------------------------------');
