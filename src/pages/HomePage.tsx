@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Sliders,
   ListPlus,
+  Plus,
   Clock,
   UserCheck,
   Check,
@@ -62,22 +63,45 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Hackathon Track Badge
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#F5F7FA] border border-[#E0E6ED] text-xs font-semibold text-[#002E6E] mb-5 shadow-xs">
+          {/* CodeBlitz 2.0 Track Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#E0E6ED] text-xs font-semibold text-[#002E6E] mb-5 shadow-xs">
             <span className="w-2 h-2 rounded-full bg-[#00BAF2] animate-pulse" />
-            <span>Hack-e-Awadh 2026 · PS-02: Merchant Growth AI (Paytm Track)</span>
-          </div> */}
+            <span>CodeBlitz 2.0 · Primary Track: AI & Automation</span>
+            <span className="px-2 py-0.5 rounded-full bg-sky-50 text-[10px] text-[#00BAF2] font-bold border border-sky-100">
+              ElevenLabs + Gemini AI
+            </span>
+          </div>
 
           {/* Main Headline */}
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-[#002E6E] tracking-tight leading-tight max-w-4xl mx-auto mb-4">
-            Smart Kirana Self-Checkout &{' '}
-            <span className="text-[#00BAF2]">AI Merchant Copilot</span>
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-[#002E6E] tracking-tight leading-tight max-w-4xl mx-auto mb-3">
+            FinBuddy — <span className="text-[#00BAF2]">AI-Powered Retail Automation</span>
           </h1>
 
-          {/* Subtitle */}
-          <p className="text-[#6B7A90] text-sm sm:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-            Eliminating billing queues for offline Indian stores. Shoppers scan barcodes with their phone camera and talk in Hindi, while merchants unlock real-time inventory telemetry and AI-driven growth.
+          {/* Subtitle / Core Product Promise */}
+          <p className="text-base sm:text-lg font-bold text-[#002E6E] max-w-2xl mx-auto mb-2">
+            AI Self-Checkout + Conversational Merchant Copilot
           </p>
+          <p className="text-[#6B7A90] text-xs sm:text-sm max-w-2xl mx-auto mb-6 leading-relaxed">
+            Customers self-checkout using camera barcode scanning and natural voice, while completed transactions automatically become structured business data powering a conversational AI merchant copilot.
+          </p>
+
+          {/* Core System Loop: Purchase → Payment → Data → Insight → Recommendation */}
+          <div className="max-w-3xl mx-auto bg-sky-50/70 border border-sky-100 rounded-2xl p-3.5 mb-8 shadow-2xs">
+            <span className="text-[10px] uppercase font-black tracking-wider text-[#002E6E] block mb-1.5">
+              Closed System Automation Loop
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs font-bold text-[#002E6E]">
+              <span className="bg-white px-2.5 py-1 rounded-md border border-[#E0E6ED] shadow-xs">1. Purchase</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[#00BAF2]" />
+              <span className="bg-white px-2.5 py-1 rounded-md border border-[#E0E6ED] shadow-xs">2. Payment</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[#00BAF2]" />
+              <span className="bg-white px-2.5 py-1 rounded-md border border-[#E0E6ED] shadow-xs">3. Structured Data</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[#00BAF2]" />
+              <span className="bg-white px-2.5 py-1 rounded-md border border-[#E0E6ED] shadow-xs">4. Real-Time Insight</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[#00BAF2]" />
+              <span className="bg-white px-2.5 py-1 rounded-md border border-[#E0E6ED] shadow-xs text-[#00BAF2]">5. Recommendation</span>
+            </div>
+          </div>
 
           {/* 2 Clear, Distinct Entry Paths (Step 1 of Prompt) */}
           <div className="text-center mb-4">
@@ -87,7 +111,7 @@ export const HomePage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto text-left mb-8">
-            {/* PATH 1: ENTER AS MERCHANT (Paytm for Business Style) */}
+            {/* PATH 1: ENTER AS MERCHANT (Merchant Operations & Copilot) */}
             <div className="paytm-card p-6 bg-white border border-[#E0E6ED] hover:border-[#00BAF2] rounded-2xl shadow-[0_8px_30px_rgba(0,46,110,0.08)] flex flex-col justify-between group hover:scale-[1.01] transition">
               <div>
                 <div className="flex items-center justify-between mb-4">
@@ -95,7 +119,7 @@ export const HomePage: React.FC = () => {
                     <StoreIcon className="w-6 h-6" />
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-[#002E6E]">
-                    Paytm for Business Style
+                    Merchant Operations · Ask → Understand → Act
                   </span>
                 </div>
 
@@ -142,10 +166,11 @@ export const HomePage: React.FC = () => {
                 </Link>
 
                 <Link
-                  to="/merchant/login"
-                  className="w-full h-9 bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] font-medium text-xs rounded-lg flex items-center justify-center gap-1.5 transition border border-[#E0E6ED]"
+                  to="/merchant/onboard"
+                  className="w-full h-9 bg-emerald-50 hover:bg-emerald-100 text-[#002E6E] font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition border border-emerald-200"
                 >
-                  <span>Business Onboarding & Store Credentials</span>
+                  <Plus className="w-3.5 h-3.5 text-[#21C17A]" />
+                  <span>Onboard New Business / Store</span>
                 </Link>
               </div>
             </div>
@@ -158,7 +183,7 @@ export const HomePage: React.FC = () => {
                     <ShoppingBag className="w-6 h-6" />
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-[#002E6E]">
-                    Paytm Consumer Style
+                    Shopper Checkout · Scan → Talk → Pay → Receipt
                   </span>
                 </div>
 
@@ -913,7 +938,7 @@ export const HomePage: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="font-bold text-[#002E6E]">FinBuddy</span>
-            <span>· Hack-e-Awadh 2026 (Paytm PS-02: Merchant Growth AI)</span>
+            <span>· CodeBlitz 2.0 (Track: AI & Automation)</span>
           </div>
           <div className="flex items-center gap-4 text-xs font-medium">
             <Link to="/merchant/dashboard" className="hover:text-[#00BAF2] transition">

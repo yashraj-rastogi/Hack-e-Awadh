@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Mic, MicOff, X, Sparkles, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Mic, MicOff, X, Sparkles, CheckCircle2, AlertTriangle, ArrowRight, Volume2 } from 'lucide-react';
 import { parseVoiceCommand } from '../services/aiService';
 import { VoiceIntentResult } from '../types';
 import { soundFX } from '../utils/audio';
+import { speak, stopSpeaking, primeVoicePlayback, getVoiceHealth, VoiceHealth } from '../services/voiceService';
 
 interface VoiceAssistantModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
   const [speechLang, setSpeechLang] = useState<'hi-IN' | 'en-IN'>('hi-IN');
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [voiceHealth, setVoiceHealth] = useState<VoiceHealth | null>(null);
   const [statusMessage, setStatusMessage] = useState(
     'सुन रहे हैं... हिंदी में बोलें (उदा: "२ पेप्सी जोड़ो")'
   );
@@ -44,18 +46,25 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
   const activePrompts = speechLang === 'hi-IN' ? samplePromptsHindi : samplePromptsEnglish;
 
   useEffect(() => {
+    getVoiceHealth().then((h) => setVoiceHealth(h));
+  }, []);
+
+  useEffect(() => {
     if (!isOpen) {
       stopListening();
+      stopSpeaking();
       soundFX.stopSpeaking();
       setTranscript('');
       setLastResult(null);
       return;
     }
 
+    primeVoicePlayback();
     startListening(speechLang);
 
     return () => {
       stopListening();
+      stopSpeaking();
       soundFX.stopSpeaking();
     };
   }, [isOpen, speechLang]);
@@ -152,16 +161,18 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
 
       if (result.intent !== 'unknown') {
         soundFX.playScanBeep();
-        soundFX.speakText(result.reply);
+        primeVoicePlayback();
+        speak(result.reply, speechLang === 'hi-IN' ? 'hi' : 'en');
         onExecuteIntent(result);
         setStatusMessage(result.reply);
 
-        // Auto close after 2.2 seconds on success so voice finishes
+        // Auto close after 2.8 seconds on success so voice finishes
         setTimeout(() => {
           onClose();
-        }, 2200);
+        }, 2800);
       } else {
-        soundFX.speakText(result.reply);
+        primeVoicePlayback();
+        speak(result.reply, speechLang === 'hi-IN' ? 'hi' : 'en');
         setStatusMessage(result.reply);
       }
     } catch (e) {
@@ -183,10 +194,16 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
           <X className="w-4 h-4" />
         </button>
 
-        {/* AI Voice Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-[#002E6E] border border-sky-100 text-xs font-bold mb-3">
-          <Sparkles className="w-3.5 h-3.5 text-[#00BAF2]" />
-          <span>FinBuddy Voice Assistant</span>
+        {/* AI Voice Badge with ElevenLabs Indicator */}
+        <div className="flex flex-col items-center gap-1 mb-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-[#002E6E] border border-sky-100 text-xs font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-[#00BAF2]" />
+            <span>FinBuddy Voice Assistant</span>
+          </div>
+          <span className="text-[10px] font-bold text-[#00BAF2] flex items-center gap-1">
+            <Volume2 className="w-3 h-3" />
+            <span>Voice Engine: {voiceHealth?.tts ? 'ElevenLabs Multilingual V2' : 'Neural Speech'} (Hindi & English)</span>
+          </span>
         </div>
 
         {/* Language Selector Switch (Hindi vs Hinglish) */}

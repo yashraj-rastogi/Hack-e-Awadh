@@ -59,14 +59,18 @@ export interface Store {
   id: string;
   ownerId: string;
   name: string;
-  category: 'grocery' | 'general-store' | 'supermarket' | 'fmcg' | 'kirana';
+  category: 'grocery' | 'general-store' | 'supermarket' | 'fmcg' | 'kirana' | 'bakery-cafe' | 'convenience' | 'other';
   location: string;
   supportedLanguages: ('en' | 'hi' | 'hinglish')[];
   qrSlug: string;
   isDemoData: boolean;
   createdAt: number;
+  ownerName?: string;
   ownerEmail?: string;
   ownerPhone?: string;
+  upiVpa?: string;
+  targetDailyRevenueRupees?: number;
+  standeeTitle?: string;
   bankingDetails?: MerchantBankingDetails;
 }
 
@@ -77,11 +81,12 @@ export interface Product {
   pricePaise: number; // e.g. 2000 paise = ₹20.00
   stock: number;
   lowStockThreshold: number;
-  category: 'Beverages' | 'Instant Food' | 'Snacks' | 'Dairy' | 'Staples' | 'Confectionery';
+  category: 'Beverages' | 'Instant Food' | 'Snacks' | 'Dairy' | 'Staples' | 'Confectionery' | 'Personal Care' | 'Bakery' | 'Household' | 'Other';
   isActive: boolean;
   updatedAt: number;
   imageUrl?: string;
   description?: string;
+  storeId?: string;
 }
 
 export interface CartItem {

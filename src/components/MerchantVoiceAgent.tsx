@@ -474,8 +474,12 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
         <div className="flex items-center gap-2.5 min-w-0">
           <ShopkeeperRobot mode={robotMode} />
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#00BAF2]">{copy.eyebrow}</p>
-            <h3 className="text-base font-black text-[#002E6E] leading-tight">FinBuddy</h3>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-base font-black text-[#002E6E] leading-tight">FinBuddy</h3>
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                🎙️ ElevenLabs Voice
+              </span>
+            </div>
             <p className="text-xs font-bold text-[#002E6E] truncate" role="status" title={status.hint}>
               {status.title}
             </p>

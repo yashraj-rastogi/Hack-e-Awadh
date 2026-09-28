@@ -1,10 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, LayoutDashboard, QrCode } from 'lucide-react';
+import { ShoppingBag, LayoutDashboard, QrCode, PlusCircle } from 'lucide-react';
+import { getStore, subscribeToStoreUpdates } from '../services/db';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
   const isMerchant = location.pathname.startsWith('/merchant');
+  const [store, setStore] = useState(getStore());
+
+  useEffect(() => {
+    const unsub = subscribeToStoreUpdates(() => {
+      setStore(getStore());
+    });
+    return () => unsub();
+  }, []);
 
   // Merchant Header (Section 11: Deep Navy #002E6E)
   if (isMerchant) {
@@ -27,17 +36,20 @@ export const Navbar: React.FC = () => {
                     Merchant
                   </span>
                 </div>
-                <span className="text-[11px] text-blue-200">Awadh Mart (Hazratganj)</span>
+                <span className="text-[11px] text-blue-200 truncate max-w-[180px] sm:max-w-xs">{store.name}</span>
               </div>
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
-              to="/"
-              className="px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-medium text-blue-200 hover:text-white transition"
+              to="/merchant/onboard"
+              className="px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-[#21C17A] hover:bg-[#1eb06f] text-white transition flex items-center gap-1.5 shadow-xs"
+              title="Add a new business or store"
             >
-              Overview
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Onboard Store</span>
+              <span className="sm:hidden">New</span>
             </Link>
 
             <Link
@@ -49,18 +61,12 @@ export const Navbar: React.FC = () => {
             </Link>
 
             <Link
-              to="/customer"
-              className="px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-medium text-blue-200 hover:text-white transition"
-            >
-              Customer Hub
-            </Link>
-
-            <Link
-              to="/s/store-awadh-01/checkout"
+              to={`/s/${store.id}/checkout`}
               className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold bg-[#00BAF2] hover:bg-[#00a4d6] text-white transition flex items-center gap-1.5 shadow-sm"
             >
               <ShoppingBag className="w-4 h-4" />
-              <span>Customer Checkout</span>
+              <span className="hidden md:inline">Customer Checkout</span>
+              <span className="md:hidden">Checkout</span>
             </Link>
 
             <a

@@ -7,6 +7,7 @@ import { CheckoutPage } from './pages/CheckoutPage';
 import { ReceiptPage } from './pages/ReceiptPage';
 import { MerchantDashboardPage } from './pages/MerchantDashboardPage';
 import { MerchantLoginPage } from './pages/MerchantLoginPage';
+import { MerchantOnboardingPage } from './pages/MerchantOnboardingPage';
 
 import { CustomerPortalPage } from './pages/CustomerPortalPage';
 
@@ -22,6 +23,7 @@ export const App: React.FC = () => {
           <Route path="/s/:storeId/checkout" element={<CheckoutPage />} />
           <Route path="/s/:storeId/receipt/:receiptId" element={<ReceiptPage />} />
           <Route path="/merchant/login" element={<MerchantLoginPage />} />
+          <Route path="/merchant/onboard" element={<MerchantOnboardingPage />} />
           <Route path="/merchant/dashboard" element={<MerchantDashboardPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

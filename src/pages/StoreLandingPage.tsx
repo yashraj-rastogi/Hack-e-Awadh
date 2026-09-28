@@ -28,16 +28,19 @@ export const StoreLandingPage: React.FC = () => {
           />
         </div>
 
-        {/* Hackathon PS-02 Badge */}
+        {/* CodeBlitz 2.0 Track Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#E0E6ED] text-xs font-semibold text-[#002E6E] mb-6 shadow-sm">
           <span className="w-2 h-2 rounded-full bg-[#00BAF2]" />
-          <span>Hack-e-Awadh 2026 · PS-02: Merchant Growth AI (Paytm Track)</span>
+          <span>CodeBlitz 2.0 · Track: AI & Automation</span>
+          <span className="px-2 py-0.5 rounded-full bg-sky-50 text-[10px] text-[#00BAF2] font-bold border border-sky-100">
+            ElevenLabs + Gemini AI
+          </span>
         </div>
 
-        {/* Store Greeting & Heading (Section 12) */}
+        {/* Store Greeting & Heading */}
         <div className="mb-4">
           <span className="text-xs uppercase font-bold tracking-wider text-[#00BAF2] block mb-1">
-            Store Check-In
+            Store Check-In · Scan → Talk → Pay → Receipt
           </span>
           <h1 className="text-3xl sm:text-5xl font-black text-[#002E6E] tracking-tight leading-tight">
             Welcome to {store.name}
@@ -45,8 +48,8 @@ export const StoreLandingPage: React.FC = () => {
         </div>
 
         <p className="text-[#6B7A90] text-sm sm:text-base max-w-lg mb-8 leading-relaxed">
-          Skip billing queues with Paytm-style self-checkout. Scan product barcodes with your camera,
-          update your cart by voice, and pay in seconds.
+          Skip billing queues with FinBuddy AI self-checkout. Scan product barcodes with your phone camera,
+          update your cart by voice with ElevenLabs, and pay in seconds via Paytm Gateway.
         </p>
 
         {/* Store Standee QR Card (Section 12 & 43) */}
@@ -146,7 +149,7 @@ export const StoreLandingPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="border-t border-[#E0E6ED] bg-white py-4 text-center text-xs text-[#6B7A90]">
-        <p>FinBuddy · Hack-e-Awadh 2026 · Built by Team Byte-Bandits</p>
+        <p>FinBuddy · AI-Powered Retail Automation · CodeBlitz 2.0</p>
       </footer>
     </div>
   );

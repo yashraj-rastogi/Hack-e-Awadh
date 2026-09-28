@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp,
   Package,
@@ -21,9 +22,15 @@ import {
   Building2,
   X,
   Smartphone,
+  QrCode,
+  PlusCircle,
+  Store as StoreIcon,
 } from 'lucide-react';
 import {
   getStore,
+  getAllStores,
+  getActiveStoreId,
+  setActiveStoreId,
   getProducts,
   getTransactions,
   getFeedback,
@@ -41,6 +48,7 @@ import {
   savePaymentSimulatorConfig,
 } from '../services/db';
 import {
+  Store,
   Product,
   Transaction,
   Feedback,
@@ -49,13 +57,17 @@ import {
   PaymentSimulatorConfig,
 } from '../types';
 import { MerchantVoiceAgent } from '../components/MerchantVoiceAgent';
+import { StoreStandeeModal } from '../components/StoreStandeeModal';
 
 export const MerchantDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [store, setStore] = useState(getStore());
-  const [products, setProducts] = useState<Product[]>(getProducts());
-  const [transactions, setTransactions] = useState<Transaction[]>(getTransactions(undefined, 30));
-  const [feedback, setFeedback] = useState<Feedback[]>(getFeedback());
-  const [insights, setInsights] = useState<Insight[]>(getInsights());
+  const [allStores, setAllStores] = useState<Store[]>(getAllStores());
+  const [standeeModalOpen, setStandeeModalOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>(getProducts(store.id));
+  const [transactions, setTransactions] = useState<Transaction[]>(getTransactions(store.id, 30));
+  const [feedback, setFeedback] = useState<Feedback[]>(getFeedback(store.id));
+  const [insights, setInsights] = useState<Insight[]>(getInsights(store.id));
   const [banking, setBanking] = useState<MerchantBankingDetails>(getMerchantBankingDetails());
   const [simulatorConfig, setSimulatorConfig] = useState<PaymentSimulatorConfig>(getPaymentSimulatorConfig());
 
@@ -109,11 +121,13 @@ export const MerchantDashboardPage: React.FC = () => {
   // Real-time listener for live sync
   useEffect(() => {
     const unsubscribe = subscribeToStoreUpdates(() => {
-      setStore(getStore());
-      setProducts(getProducts());
-      setTransactions(getTransactions(undefined, 30));
-      setFeedback(getFeedback());
-      setInsights(getInsights());
+      const active = getStore();
+      setStore(active);
+      setAllStores(getAllStores());
+      setProducts(getProducts(active.id));
+      setTransactions(getTransactions(active.id, 30));
+      setFeedback(getFeedback(active.id));
+      setInsights(getInsights(active.id));
       setBanking(getMerchantBankingDetails());
       setSimulatorConfig(getPaymentSimulatorConfig());
     });
@@ -232,22 +246,71 @@ export const MerchantDashboardPage: React.FC = () => {
       {/* Sub-header Navigation Bar */}
       <div className="bg-white border-b border-[#E0E6ED] px-4 sm:px-6">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#21C17A] animate-pulse" />
-            <span className="text-xs font-bold text-[#002E6E] uppercase tracking-wider">
-              Real-Time Store Sync Active
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#21C17A] animate-pulse shrink-0" />
+            <span className="text-xs font-bold text-[#002E6E] uppercase tracking-wider hidden sm:inline">
+              Active Store:
             </span>
-            <span className="text-xs text-[#6B7A90]">· Updates instantly on checkout</span>
+
+            {/* Store Switcher */}
+            <div className="flex items-center gap-1.5 bg-[#F5F7FA] px-2 py-1 rounded-lg border border-[#E0E6ED]">
+              <StoreIcon className="w-3.5 h-3.5 text-[#00BAF2]" />
+              <select
+                value={store.id}
+                onChange={(e) => {
+                  if (e.target.value === '__new__') {
+                    navigate('/merchant/onboard');
+                  } else {
+                    setActiveStoreId(e.target.value);
+                    const switched = getStore(e.target.value);
+                    setStore(switched);
+                    setProducts(getProducts(switched.id));
+                    setTransactions(getTransactions(switched.id, 30));
+                    setFeedback(getFeedback(switched.id));
+                    setInsights(getInsights(switched.id));
+                    showToast(`Switched active store: ${switched.name}`);
+                  }
+                }}
+                className="bg-transparent text-xs font-bold text-[#002E6E] focus:outline-none cursor-pointer pr-1 max-w-[200px] sm:max-w-xs truncate"
+              >
+                {allStores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.location})
+                  </option>
+                ))}
+                <option value="__new__">+ Onboard New Store...</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/merchant/onboard')}
+              className="text-[11px] font-bold text-[#00BAF2] hover:text-[#002E6E] flex items-center gap-1 transition px-1"
+              title="Onboard another business or shop"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Add Store</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={() => setStandeeModalOpen(true)}
+              title="View, download, and print official shop QR standee"
+              className="px-3 py-1.5 rounded-md bg-[#002E6E] hover:bg-[#001D47] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+            >
+              <QrCode className="w-3.5 h-3.5 text-[#00BAF2]" />
+              <span>QR Standee</span>
+            </button>
+
+            <button
               onClick={handleResetData}
               title="Reset stock and transaction history to clean seed state"
-              className="px-3 py-1.5 rounded-md bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] hover:text-[#00BAF2] text-xs font-semibold flex items-center gap-1.5 border border-[#E0E6ED] transition"
+              className="px-2.5 py-1.5 rounded-md bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] hover:text-[#00BAF2] text-xs font-semibold flex items-center gap-1.5 border border-[#E0E6ED] transition"
             >
               <RefreshCw className="w-3.5 h-3.5 text-[#00BAF2]" />
-              <span>Reset Demo Data</span>
+              <span className="hidden sm:inline">Reset Demo</span>
             </button>
 
             <a
@@ -257,7 +320,7 @@ export const MerchantDashboardPage: React.FC = () => {
               className="px-3.5 py-1.5 rounded-md bg-[#00BAF2] hover:bg-[#00a4d6] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
             >
               <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Open Customer App</span>
+              <span>Customer App</span>
               <ExternalLink className="w-3 h-3 opacity-70" />
             </a>
           </div>
@@ -1462,6 +1525,13 @@ export const MerchantDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Official Physical Store QR Standee Modal */}
+      <StoreStandeeModal
+        store={store}
+        isOpen={standeeModalOpen}
+        onClose={() => setStandeeModalOpen(false)}
+      />
     </div>
   );
 };

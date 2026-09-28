@@ -66,7 +66,7 @@ export const MerchantLoginPage: React.FC = () => {
           </h1>
           <p className="text-xs text-[#6B7A90] mt-0.5">
             {mode === 'signin'
-              ? 'Paytm for Business · Kirana Copilot Dashboard'
+              ? 'FinBuddy Merchant Copilot · Live Business Portal'
               : 'Register your offline store credentials & location profile'}
           </p>
         </div>
@@ -103,7 +103,7 @@ export const MerchantLoginPage: React.FC = () => {
             <div className="p-3.5 rounded-xl bg-sky-50 border border-sky-100 text-xs text-[#002E6E] mb-5 flex items-start gap-2.5">
               <Sparkles className="w-4 h-4 text-[#00BAF2] shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold">Hack-e-Awadh Staging Access:</span>
+                <span className="font-bold">CodeBlitz 2.0 Staging Access:</span>
                 <p className="text-[11px] text-[#6B7A90] mt-0.5 leading-relaxed">
                   Pre-configured merchant credentials for <strong>Awadh Mart (Hazratganj)</strong> with 15 seeded FMCG items and live telemetry.
                 </p>
@@ -153,141 +153,58 @@ export const MerchantLoginPage: React.FC = () => {
             </form>
           </div>
         ) : (
-          /* Step 2.1: Business Onboarding & Account Creation Form */
-          <form onSubmit={handleOnboard} className="space-y-3.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-[#002E6E] block mb-1">
-                  Store / Business Name
-                </label>
-                <div className="relative">
-                  <StoreIcon className="w-3.5 h-3.5 text-[#6B7A90] absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    required
-                    value={storeName}
-                    onChange={(e) => setStoreName(e.target.value)}
-                    placeholder="e.g. Awadh Mart"
-                    className="w-full pl-8 pr-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
-                  />
+          /* Step 2.1: Business Onboarding & Account Creation Gateway */
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-100 text-left">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#00BAF2] text-white mb-2">
+                <Sparkles className="w-3 h-3" />
+                <span>Smart Onboarding Wizard</span>
+              </span>
+              <h3 className="text-base font-black text-[#002E6E] mb-1">
+                Setup Store, Inventory & QR Standee
+              </h3>
+              <p className="text-xs text-[#6B7A90] leading-relaxed mb-4">
+                Launch your queue-less self-checkout in 4 simple steps:
+              </p>
+
+              <div className="space-y-2 text-xs text-[#1C2D42] mb-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#21C17A] shrink-0" />
+                  <span><strong>1. Store Profile:</strong> Business name, location & UPI details</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#21C17A] shrink-0" />
+                  <span><strong>2. 1-Click Inventory:</strong> Kirana, Supermarket & FMCG packs + CSV import</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#21C17A] shrink-0" />
+                  <span><strong>3. FinBuddy Setup:</strong> Hindi & Hinglish voice Copilot & stock alerts</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#21C17A] shrink-0" />
+                  <span><strong>4. Physical Standee:</strong> High-res QR standee ready to print & display</span>
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-[#002E6E] block mb-1">
-                  Business Category
-                </label>
-                <div className="relative">
-                  <Tag className="w-3.5 h-3.5 text-[#6B7A90] absolute left-3 top-1/2 -translate-y-1/2" />
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as any)}
-                    className="w-full pl-8 pr-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
-                  >
-                    <option value="kirana">Kirana & Grocery</option>
-                    <option value="fmcg">FMCG & Convenience</option>
-                    <option value="supermarket">Supermarket</option>
-                    <option value="general-store">General Retail</option>
-                  </select>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/merchant/onboard')}
+                className="w-full h-11 bg-[#002E6E] hover:bg-[#001D47] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition active:scale-98"
+              >
+                <span>Launch 4-Step Onboarding Wizard</span>
+                <ArrowRight className="w-4 h-4 text-[#00BAF2]" />
+              </button>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-[#002E6E] block mb-1">
-                Store Location / Address
-              </label>
-              <div className="relative">
-                <MapPin className="w-3.5 h-3.5 text-[#6B7A90] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  required
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Hazratganj, Lucknow"
-                  className="w-full pl-8 pr-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-[#002E6E] block mb-1">
-                  Proprietor / Owner Name
-                </label>
-                <div className="relative">
-                  <User className="w-3.5 h-3.5 text-[#6B7A90] absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    required
-                    value={ownerName}
-                    onChange={(e) => setOwnerName(e.target.value)}
-                    placeholder="Owner Full Name"
-                    className="w-full pl-8 pr-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-[#002E6E] block mb-1">
-                  Business Mobile / UPI
-                </label>
-                <div className="relative">
-                  <Phone className="w-3.5 h-3.5 text-[#6B7A90] absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="tel"
-                    required
-                    value={ownerPhone}
-                    onChange={(e) => setOwnerPhone(e.target.value)}
-                    placeholder="9876543210"
-                    className="w-full pl-8 pr-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-[#002E6E] block mb-1">
-                  Work Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={ownerEmail}
-                  onChange={(e) => setOwnerEmail(e.target.value)}
-                  placeholder="contact@store.in"
-                  className="w-full px-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-[#002E6E] block mb-1">
-                  GSTIN (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={gstin}
-                  onChange={(e) => setGstin(e.target.value)}
-                  placeholder="09AAACA1234A1Z5"
-                  className="w-full px-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full h-11 bg-[#002E6E] hover:bg-[#001D47] text-white font-bold text-xs rounded-lg shadow-sm flex items-center justify-center gap-2 transition active:scale-[0.98] mt-2"
-            >
-              <CheckCircle2 className="w-4 h-4 text-[#00BAF2]" />
-              <span>Register Business & Launch Copilot</span>
-            </button>
-          </form>
+            <p className="text-[11px] text-center text-[#6B7A90]">
+              Takes less than 2 minutes. No paperwork or merchant pos machine needed.
+            </p>
+          </div>
         )}
 
         <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-[#6B7A90]">
           <ShieldCheck className="w-3.5 h-3.5 text-[#21C17A]" />
-          <span>Paytm for Business · End-to-End Encrypted Merchant Hub</span>
+          <span>FinBuddy Verified Merchant Portal · Paytm Payment Gateway Protected</span>
         </div>
       </div>
     </div>
