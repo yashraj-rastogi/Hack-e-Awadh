@@ -1,7 +1,7 @@
 # FinBuddy — AI-Powered Retail Automation
 
 > **CodeBlitz 2.0 · Primary Track: AI & Automation**  
-> **Team Byte-Bandits**: Yashraj Rastogi (Lead) · Gaurav Kumar · Vineet Shukla
+> **Team Byte-Bandits**: Yashraj Rastogi (Lead) · Ananya Yadav
 
 [![CodeBlitz 2.0](https://img.shields.io/badge/CodeBlitz_2.0-AI_%26_Automation_Track-00BAF2.svg)](https://codeblitz.dev)
 [![React](https://img.shields.io/badge/React-19-blue.svg?logo=react)](https://react.dev/)
@@ -248,7 +248,6 @@ Follow this script for live evaluation:
 ## 👥 Team Byte-Bandits
 
 - **Yashraj Rastogi** — Lead & Full-Stack Architect
-- **Gaurav Kumar** — Backend & AI Integration
-- **Vineet Shukla** — UI/UX & Voice Engineering
+- **Ananya Yadav** — UI/UX & Voice Engineering
 
 *Built for CodeBlitz 2.0 — AI & Automation Track.*
