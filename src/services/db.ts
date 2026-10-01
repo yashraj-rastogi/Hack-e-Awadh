@@ -12,6 +12,9 @@ import {
   ShoppingListItem,
   MerchantBankingDetails,
   PaymentSimulatorConfig,
+  AgentGoal,
+  AgentGoalStatus,
+  AgentAlert,
 } from '../types';
 import {
   SEED_STORE,
@@ -743,3 +746,72 @@ export function getCustomerReceipts(phoneOrCustomerId?: string): Receipt[] {
       r.id.includes(phoneOrCustomerId)
   );
 }
+
+// ─── Agent Goal Tracking & Alerts ───────────────────────────────────────
+
+const AGENT_GOALS_KEY = (storeId?: string) => `${STORAGE_PREFIX}agent_goals_${storeId || getActiveStoreId()}`;
+const AGENT_ALERTS_KEY = (storeId?: string) => `${STORAGE_PREFIX}agent_alerts_${storeId || getActiveStoreId()}`;
+
+export function getAgentGoals(storeId?: string): AgentGoal[] {
+  try {
+    const raw = localStorage.getItem(AGENT_GOALS_KEY(storeId));
+    const goals: AgentGoal[] = raw ? JSON.parse(raw) : [];
+    const now = Date.now();
+    return goals.filter((g) => g.expiresAt > now || g.status === 'merchant_confirmed');
+  } catch {
+    return [];
+  }
+}
+
+export function saveAgentGoal(storeId: string | undefined, goal: AgentGoal): void {
+  const goals = getAgentGoals(storeId);
+  const idx = goals.findIndex((g) => g.id === goal.id);
+  if (idx >= 0) {
+    goals[idx] = goal;
+  } else {
+    goals.push(goal);
+  }
+  localStorage.setItem(AGENT_GOALS_KEY(storeId), JSON.stringify(goals));
+  notifyListeners();
+}
+
+export function updateGoalStatus(
+  storeId: string | undefined,
+  goalId: string,
+  status: AgentGoalStatus
+): void {
+  const goals = getAgentGoals(storeId);
+  const goal = goals.find((g) => g.id === goalId);
+  if (goal) {
+    goal.status = status;
+    localStorage.setItem(AGENT_GOALS_KEY(storeId), JSON.stringify(goals));
+    notifyListeners();
+  }
+}
+
+export function getAgentAlerts(storeId?: string): AgentAlert[] {
+  try {
+    const raw = localStorage.getItem(AGENT_ALERTS_KEY(storeId));
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveAgentAlert(storeId: string | undefined, alert: AgentAlert): void {
+  const alerts = getAgentAlerts(storeId).slice(-50);
+  alerts.push(alert);
+  localStorage.setItem(AGENT_ALERTS_KEY(storeId), JSON.stringify(alerts));
+  notifyListeners();
+}
+
+export function acknowledgeAlert(storeId: string | undefined, alertId: string): void {
+  const alerts = getAgentAlerts(storeId);
+  const alert = alerts.find((a) => a.id === alertId);
+  if (alert) {
+    alert.acknowledged = true;
+    localStorage.setItem(AGENT_ALERTS_KEY(storeId), JSON.stringify(alerts));
+    notifyListeners();
+  }
+}
+

@@ -33,6 +33,9 @@ interface MerchantVoiceAgentProps {
   /** A question queued from elsewhere on the dashboard (e.g. an insight card). */
   queuedQuestion?: { id: number; text: string } | null;
   onQueuedQuestionHandled?: () => void;
+  /** Direct proactive message from autonomous agent tick */
+  injectedMessage?: CopilotMessage | null;
+  onInjectedMessageHandled?: () => void;
   /** Floating panel visibility. The launcher stays on screen either way. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -246,6 +249,8 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
   onOpenTab,
   queuedQuestion,
   onQueuedQuestionHandled,
+  injectedMessage,
+  onInjectedMessageHandled,
   open,
   onOpenChange,
 }) => {
@@ -394,6 +399,15 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
     askQuestion(queuedQuestion.text);
     onQueuedQuestionHandled?.();
   }, [queuedQuestion, askQuestion, onQueuedQuestionHandled]);
+
+  const handledInjectedId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!injectedMessage || handledInjectedId.current === injectedMessage.id) return;
+    handledInjectedId.current = injectedMessage.id;
+    setMessages((prev) => [...prev, injectedMessage]);
+    if (voiceRepliesRef.current) speakMessage(injectedMessage);
+    onInjectedMessageHandled?.();
+  }, [injectedMessage, speakMessage, onInjectedMessageHandled]);
 
   const toggleMic = async () => {
     if (phase === 'listening') {
@@ -580,6 +594,12 @@ export const MerchantVoiceAgent: React.FC<MerchantVoiceAgentProps> = ({
                 }`}
                 lang={msg.language === 'hi' ? 'hi' : msg.language === 'en' ? 'en-IN' : undefined}
               >
+                {msg.id.startsWith('agent_') && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2.5 rounded-lg bg-purple-100/80 border border-purple-300 text-purple-800 text-[10.5px] font-bold tracking-wider uppercase shadow-xs">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
+                    <span>Autonomous Agent Alert</span>
+                  </div>
+                )}
                 <p className="whitespace-pre-line">{msg.text}</p>
 
                 {msg.metrics && (

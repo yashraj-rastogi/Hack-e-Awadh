@@ -239,3 +239,44 @@ export interface CopilotMessage {
   };
   metrics?: Record<string, string | number>;
 }
+
+// ─── Agent Goal Tracking ────────────────────────────────────────────────
+export type AgentGoalType = 'restock' | 'price_review' | 'combo_push' | 'demand_alert';
+export type AgentGoalStatus = 'pending' | 'merchant_confirmed' | 'dismissed' | 'expired';
+
+export interface AgentGoal {
+  id: string;
+  type: AgentGoalType;
+  productName?: string;
+  quantity?: number;
+  createdAt: number;
+  expiresAt: number;
+  status: AgentGoalStatus;
+  reason: string;
+  followUpCount: number;
+}
+
+// ─── Proactive Agent Alert ──────────────────────────────────────────────
+export type AgentAlertSeverity = 'critical' | 'warning' | 'info';
+
+export interface AgentAlert {
+  id: string;
+  severity: AgentAlertSeverity;
+  title: string;
+  body: string;
+  productName?: string;
+  goalId?: string;
+  triggeredAt: number;
+  acknowledged: boolean;
+}
+
+// ─── Demand Signal ──────────────────────────────────────────────────────
+export interface DemandSignal {
+  productId: string;
+  productName: string;
+  trend: 'rising' | 'falling' | 'stable';
+  changePercent: number;
+  suggestion: string;
+  urgency: 'high' | 'medium' | 'low';
+}
+

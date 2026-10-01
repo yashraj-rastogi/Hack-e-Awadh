@@ -47,15 +47,16 @@ $$\mathbf{Purchase \longrightarrow Payment \longrightarrow Data \longrightarrow 
 
 ---
 
-## ⚡ CodeBlitz 2.0 Positioning: AI & Automation
+## ⚡ Theme 03 Positioning: Agentic AI & Automation
 
-FinBuddy was engineered specifically for the **AI & Automation** track of **CodeBlitz 2.0**:
+FinBuddy was engineered specifically for the **Agentic AI & Automation** track:
 
-1. **AI Vision & Voice Automation**: Camera-based sub-second EAN-13 barcode detection paired with **ElevenLabs Multilingual v2** high-fidelity speech synthesis and **Google Gemini Flash** bilingual intent parsing.
-2. **Deterministic Transaction Integrity**: The LLM handles natural language understanding, reasoning, and operational recommendations. Deterministic TypeScript code strictly handles price math, cart totals, atomic inventory decrements, payment state machines, and receipt generation.
-3. **Real-World Offline Retail Workflow**: From 4-step merchant onboarding with printable physical QR standees to zero-install mobile shopper self-checkout.
-4. **Actionable Business Intelligence**: Merchants can literally **"Ask Your Business"** in everyday language and receive telemetry-backed operational guidance instead of staring at raw dashboards.
-5. **Strict Ethical Guardrails**: Hard-coded safety interceptors prevent regulated financial advice (loans, insurance, mutual funds, credit underwriting) and gracefully redirect merchants to operational stock & sales trends.
+1. **Autonomous Operational Agent**: Unlike passive chatbots that wait for user prompts, FinBuddy's background agent (`agentLoop.ts`) continuously monitors store telemetry 24/7. It autonomously detects zero-stock threats, peak rush timing windows, and negative velocity dips, pushing prioritized operational alerts to the merchant's screen and conversational feed.
+2. **Perceive → Reason → Alert → Act Loop**: The agent perceives store facts atomically, reasons over trends with Google Gemini Flash, creates goal state machines (`AgentGoal`), and surfaces deterministic 1-click restock proposals.
+3. **AI Vision & Voice Automation**: Camera-based sub-second EAN-13 barcode detection paired with **ElevenLabs Multilingual v2** high-fidelity speech synthesis and **Google Gemini Flash** bilingual intent parsing.
+4. **Deterministic Transaction Integrity**: The LLM handles natural language reasoning and operational recommendations. Deterministic TypeScript code strictly handles price math, cart totals, atomic inventory decrements, payment state machines, and receipt generation.
+5. **Real-World Offline Retail Workflow**: From 4-step merchant onboarding with printable physical QR standees to zero-install mobile shopper self-checkout with Paytm Gateway and automated WhatsApp receipts.
+6. **Strict Ethical Guardrails**: Hard-coded safety interceptors prevent regulated financial advice (loans, insurance, mutual funds, credit underwriting) and gracefully redirect merchants to operational stock & sales trends.
 
 ---
 
@@ -218,21 +219,20 @@ Follow this script for live evaluation:
 7. **Generate Payment**: Tap **"Generate Payment"** $\rightarrow$ select Paytm Gateway Sandbox $\rightarrow$ click **"Confirm & Pay"**.
 8. **View Digital Receipt**: Confetti triggers, payment chimes play, and the digital receipt appears with Paytm reference, itemized GST breakdown, and WhatsApp delivery preview.
 
-### Part 2: Merchant AI Copilot (Ask → Understand → Act)
+### Part 2: Autonomous Merchant Agent (Perceive → Reason → Alert → Act)
 9. **Open Merchant Dashboard**: In another window, navigate to `http://localhost:5173/merchant/dashboard`.
-10. **Verify Real-Time Synchronization**: Without refreshing, notice the new transaction in the live sales feed and Maggi's stock decrementing atomically.
-11. **Ask Today's Business**: Click the floating FinBuddy Copilot robot and ask (or tap chip):
+10. **Notice the Autonomous Agent Status**: Point out the pulsing green **"Agent Active (24/7)"** indicator in the top navbar. Explain that FinBuddy is continuously monitoring velocity, stock risk, and peak windows in the background.
+11. **Review Autonomous Demand Signals**: Click **"Customizable Inventory"** tab. Highlight the **"Autonomous Agent Demand Signals"** panel showing 7-day velocity differentials (e.g. rising snack trends, replenishment suggestions) computed before the merchant even asks.
+12. **Witness Autonomous Proactive Alerts**: If an item reaches critical or zero stock, show the **"Autonomous Agent Alert"** banner at the top of the dashboard. Click **"Restock"** right from the alert to trigger an immediate restock proposal.
+13. **Ask Today's Business (Voice & Text)**: Click the floating FinBuddy robot and ask:
     > *"Aaj ka business kaisa raha?"*
-    Copilot quotes exact sales from the ledger, notes peak beverage demand, and speaks the answer via **ElevenLabs**.
-12. **Ask Operational Action**: Ask:
-    > *"Mujhe kya action lena chahiye?"*
-    Copilot provides an **Observation $\rightarrow$ Explanation $\rightarrow$ Recommendation** response, suggesting an evening snack & drink combo.
-13. **Ask Low Stock & Restock**: Ask:
+    Agent quotes exact figures from the ledger and speaks the answer in natural Hindi via **ElevenLabs**.
+14. **Test Autonomous Restock Proposal**: Ask:
     > *"Kaunsa product low hai?"*
-    Copilot identifies Maggi as low stock and presents a **"Confirm restock (+30 units)"** action button that updates inventory upon 1-click merchant confirmation.
-14. **Test Ethical Safety Guardrails**: Ask:
+    Agent identifies low stock and presents an interactive **"Confirm restock"** action button. Click it to observe real-time atomic inventory replenishment.
+15. **Test Ethical Safety Guardrails**: Ask:
     > *"Should I take a 10 lakh business loan?"*
-    Copilot safely declines regulated financial underwriting and redirects to sales and inventory trends.
+    Agent safely declines regulated financial underwriting and redirects to operational stock and sales velocity facts.
 
 ---
 

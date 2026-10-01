@@ -25,6 +25,10 @@ import {
   QrCode,
   PlusCircle,
   Store as StoreIcon,
+  AlertTriangle,
+  TrendingDown,
+  BellRing,
+  Bot,
 } from 'lucide-react';
 import {
   getStore,
@@ -46,6 +50,8 @@ import {
   saveMerchantBankingDetails,
   getPaymentSimulatorConfig,
   savePaymentSimulatorConfig,
+  getAgentAlerts,
+  acknowledgeAlert,
 } from '../services/db';
 import {
   Store,
@@ -55,7 +61,11 @@ import {
   Insight,
   MerchantBankingDetails,
   PaymentSimulatorConfig,
+  AgentAlert,
+  DemandSignal,
+  CopilotMessage,
 } from '../types';
+import { runAgentTick, computeDemandSignals } from '../services/agentLoop';
 import { MerchantVoiceAgent } from '../components/MerchantVoiceAgent';
 import { StoreStandeeModal } from '../components/StoreStandeeModal';
 
@@ -86,6 +96,17 @@ export const MerchantDashboardPage: React.FC = () => {
   const [inventorySearch, setInventorySearch] = useState('');
   const [resetSuccessToast, setResetSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Autonomous Agent States
+  const [agentAlerts, setAgentAlerts] = useState<AgentAlert[]>(() =>
+    getAgentAlerts(store.id).filter((a) => !a.acknowledged).slice(-5)
+  );
+  const [demandSignals, setDemandSignals] = useState<DemandSignal[]>(() =>
+    computeDemandSignals(store.id)
+  );
+  const [agentRunning, setAgentRunning] = useState(false);
+  const [lastAgentRun, setLastAgentRun] = useState<number | null>(null);
+  const [injectedCopilotMessage, setInjectedCopilotMessage] = useState<CopilotMessage | null>(null);
 
   // Add Product Modal State
   const [showAddProductModal, setShowAddProductModal] = useState(false);
@@ -118,6 +139,45 @@ export const MerchantDashboardPage: React.FC = () => {
     return () => window.removeEventListener('finbuddy-lang', onLang);
   }, []);
 
+  // ─── Autonomous Agent Loop ────────────────────────────────────────────────
+  const runAgent = useCallback(async () => {
+    if (agentRunning) return;
+    setAgentRunning(true);
+    try {
+      const result = await runAgentTick(store.id, botLang);
+      setAgentAlerts(getAgentAlerts(store.id).filter((a) => !a.acknowledged).slice(-5));
+      setDemandSignals(result.demandSignals);
+
+      if (result.proactiveCopilotMessage) {
+        setInjectedCopilotMessage(result.proactiveCopilotMessage);
+        setBotOpen(true);
+      }
+      setLastAgentRun(Date.now());
+    } catch (e) {
+      console.warn('Agent tick error:', e);
+    } finally {
+      setAgentRunning(false);
+    }
+  }, [store.id, botLang, agentRunning]);
+
+  useEffect(() => {
+    setDemandSignals(computeDemandSignals(store.id));
+    setAgentAlerts(getAgentAlerts(store.id).filter((a) => !a.acknowledged).slice(-5));
+
+    const initialTimer = setTimeout(() => {
+      runAgent();
+    }, 2500);
+
+    const interval = setInterval(() => {
+      runAgent();
+    }, 5 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [store.id, runAgent]);
+
   // Real-time listener for live sync
   useEffect(() => {
     const unsubscribe = subscribeToStoreUpdates(() => {
@@ -130,6 +190,8 @@ export const MerchantDashboardPage: React.FC = () => {
       setInsights(getInsights(active.id));
       setBanking(getMerchantBankingDetails());
       setSimulatorConfig(getPaymentSimulatorConfig());
+      setAgentAlerts(getAgentAlerts(active.id).filter((a) => !a.acknowledged).slice(-5));
+      setDemandSignals(computeDemandSignals(active.id));
     });
     return () => unsubscribe();
   }, []);
@@ -294,6 +356,26 @@ export const MerchantDashboardPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Autonomous Agent Status Indicator */}
+            <div
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-800 text-xs font-bold shadow-2xs transition"
+              title={
+                lastAgentRun
+                  ? `Autonomous Agent active. Last cycle: ${new Date(lastAgentRun).toLocaleTimeString()}`
+                  : 'Autonomous Agent initializing 24/7 background telemetry monitor...'
+              }
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  agentRunning ? 'bg-amber-400 animate-ping' : 'bg-emerald-500 animate-pulse'
+                }`}
+              />
+              <span className="hidden sm:inline font-mono text-[11px] uppercase tracking-wide">
+                {agentRunning ? 'Agent Reasoning...' : 'Agent Active (24/7)'}
+              </span>
+              <span className="sm:hidden text-[11px] font-mono">Agent</span>
+            </div>
+
             <button
               type="button"
               onClick={() => setStandeeModalOpen(true)}
@@ -423,6 +505,86 @@ export const MerchantDashboardPage: React.FC = () => {
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
+            {/* ─── Autonomous Agent Critical & Warning Alerts Banner ─── */}
+            {agentAlerts.length > 0 && (
+              <div className="space-y-2.5 animate-fade-in">
+                {agentAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`flex items-start justify-between gap-3 p-3.5 rounded-xl border shadow-xs transition ${
+                      alert.severity === 'critical'
+                        ? 'bg-gradient-to-r from-rose-50 via-white to-rose-50/30 border-rose-200 text-rose-950'
+                        : 'bg-gradient-to-r from-amber-50 via-white to-amber-50/30 border-amber-200 text-amber-950'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                          alert.severity === 'critical'
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'bg-amber-500 text-white shadow-xs'
+                        }`}
+                      >
+                        {alert.severity === 'critical' ? (
+                          <AlertTriangle className="w-4 h-4 animate-bounce" />
+                        ) : (
+                          <BellRing className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                              alert.severity === 'critical'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            Autonomous Agent Alert
+                          </span>
+                          <span className="text-xs font-bold">{alert.title}</span>
+                        </div>
+                        <p className="text-xs text-[#1C2D42]/80 mt-1 leading-relaxed">
+                          {alert.body}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {alert.productName && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            acknowledgeAlert(store.id, alert.id);
+                            setAgentAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+                            handleAskCopilot(
+                              botLang === 'hi'
+                                ? `${alert.productName} का स्टॉक तुरंत रीस्टॉक करना है`
+                                : `Propose immediate restock for ${alert.productName}`
+                            );
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-[#002E6E] hover:bg-[#001D47] text-white text-xs font-bold transition shadow-2xs"
+                        >
+                          Restock
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          acknowledgeAlert(store.id, alert.id);
+                          setAgentAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+                        }}
+                        className="p-1 rounded-md text-[#6B7A90] hover:text-[#002E6E] hover:bg-black/5 transition"
+                        title="Dismiss Alert"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="paytm-card p-5">
@@ -591,6 +753,72 @@ export const MerchantDashboardPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* ─── Autonomous Demand Forecasting Intelligence ─── */}
+            {demandSignals.length > 0 && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50/70 via-white to-sky-50/50 border border-indigo-100/90 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                      <Bot className="w-4 h-4 text-sky-200" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-[#002E6E] flex items-center gap-1.5">
+                        <span>Autonomous Agent Demand Signals</span>
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-100 text-indigo-700 uppercase tracking-wider">
+                          Real-Time Telemetry
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-[#6B7A90]">
+                        Autonomous velocity scoring comparing 7-day trailing velocity against prior baseline
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => runAgent()}
+                    disabled={agentRunning}
+                    className="text-[11px] font-bold text-[#00BAF2] hover:text-[#002E6E] flex items-center gap-1 transition disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${agentRunning ? 'animate-spin' : ''}`} />
+                    <span>Re-evaluate Now</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                  {demandSignals.map((signal) => (
+                    <div
+                      key={signal.productId}
+                      className="p-3 rounded-xl bg-white border border-[#E0E6ED] shadow-2xs hover:border-indigo-300 transition"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-[#002E6E] truncate" title={signal.productName}>
+                          {signal.productName}
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black ${
+                            signal.trend === 'rising'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : signal.trend === 'falling'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              : 'bg-slate-50 text-slate-700 border border-slate-200'
+                          }`}
+                        >
+                          {signal.trend === 'rising' && <ArrowUpRight className="w-3 h-3" />}
+                          {signal.trend === 'falling' && <TrendingDown className="w-3 h-3" />}
+                          <span>
+                            {signal.changePercent > 0 ? `+${signal.changePercent}%` : `${signal.changePercent}%`}
+                          </span>
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#6B7A90] mt-1 line-clamp-2">
+                        {signal.suggestion}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Low Stock Warning Banner */}
             {lowStockCount > 0 && (
@@ -1354,6 +1582,8 @@ export const MerchantDashboardPage: React.FC = () => {
         onOpenTab={handleCopilotOpenTab}
         queuedQuestion={queuedCopilotQuestion}
         onQueuedQuestionHandled={handleQueuedQuestionHandled}
+        injectedMessage={injectedCopilotMessage}
+        onInjectedMessageHandled={() => setInjectedCopilotMessage(null)}
         open={botOpen}
         onOpenChange={setBotOpen}
       />
