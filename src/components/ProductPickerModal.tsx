@@ -37,8 +37,8 @@ export const ProductPickerModal: React.FC<ProductPickerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#002E6E]/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-2xl bg-white border border-[#E0E6ED] rounded-2xl shadow-[0_8px_30px_rgba(0,46,110,0.18)] overflow-hidden flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#002E6E]/60 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-2xl bg-white border border-[#E0E6ED] rounded-2xl shadow-[0_8px_30px_rgba(0,46,110,0.18)] overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-[#E0E6ED] flex items-center justify-between bg-white">
           <div className="flex items-center gap-2.5">

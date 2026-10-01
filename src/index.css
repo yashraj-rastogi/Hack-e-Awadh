@@ -131,3 +131,30 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Toast slide-up animation */
+@keyframes toast-slide-up {
+  0% { opacity: 0; transform: translate(-50%, 12px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -4px); }
+}
+.animate-toast {
+  animation: toast-slide-up 2.5s ease-in-out forwards;
+}
+
+/* HTML5 QR Code Scanner responsive video fix for mobile */
+#finbuddy-qr-reader {
+  width: 100% !important;
+  border: none !important;
+}
+#finbuddy-qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 12px;
+}
+#finbuddy-qr-reader img[alt="Info icon"] {
+  display: none;
+}
+

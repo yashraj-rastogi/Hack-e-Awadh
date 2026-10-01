@@ -181,7 +181,7 @@ export const ReceiptPage: React.FC = () => {
                 placeholder="10-digit WhatsApp Number (e.g. 9876543210)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] placeholder-[#6B7A90] focus:outline-none focus:border-[#00BAF2] transition"
+                className="w-full px-3.5 py-2.5 bg-white border border-[#E0E6ED] rounded-lg text-sm text-[#1C2D42] placeholder-[#6B7A90] focus:outline-none focus:border-[#00BAF2] transition"
               />
               <label className="flex items-center gap-2 text-[11px] text-[#6B7A90] cursor-pointer">
                 <input
@@ -208,7 +208,7 @@ export const ReceiptPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={!whatsappOptIn || !phone || whatsappLoading}
-                className="w-full h-9 rounded-lg bg-[#00BAF2] hover:bg-[#00a4d6] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                className="w-full h-10 rounded-lg bg-[#00BAF2] hover:bg-[#00a4d6] disabled:opacity-50 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition active:scale-98"
               >
                 {whatsappLoading ? (
                   <>

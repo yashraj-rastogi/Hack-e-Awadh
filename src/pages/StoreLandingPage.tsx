@@ -28,14 +28,13 @@ export const StoreLandingPage: React.FC = () => {
           />
         </div>
 
-        {/* CodeBlitz 2.0 Track Badge */}
+        {/* Product Trust Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#E0E6ED] text-xs font-semibold text-[#002E6E] mb-6 shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-[#00BAF2]" />
-          <span>CodeBlitz 2.0 · Track: AI & Automation</span>
-          <span className="px-2 py-0.5 rounded-full bg-sky-50 text-[10px] text-[#00BAF2] font-bold border border-sky-100">
-            ElevenLabs + Gemini AI
-          </span>
+          <span className="w-2 h-2 rounded-full bg-[#21C17A]" />
+          <span>AI-Powered Self-Checkout · Scan · Talk · Pay</span>
         </div>
+
+
 
         {/* Store Greeting & Heading */}
         <div className="mb-4">
@@ -47,14 +46,29 @@ export const StoreLandingPage: React.FC = () => {
           </h1>
         </div>
 
-        <p className="text-[#6B7A90] text-sm sm:text-base max-w-lg mb-8 leading-relaxed">
+        <p className="text-[#6B7A90] text-sm sm:text-base max-w-lg mb-6 leading-relaxed">
           Skip billing queues with FinBuddy AI self-checkout. Scan product barcodes with your phone camera,
           update your cart by voice with ElevenLabs, and pay in seconds via Paytm Gateway.
         </p>
 
+        {/* Primary Action Button (Prominent for Mobile Shoppers) */}
+        <div className="w-full max-w-md mb-6">
+          <Link
+            to={`/s/${store.id}/checkout`}
+            className="w-full h-13 bg-[#00BAF2] hover:bg-[#00a4d6] text-white font-extrabold text-sm sm:text-base rounded-xl shadow-[0_4px_16px_rgba(0,186,242,0.35)] flex items-center justify-center gap-2.5 transition active:scale-[0.98]"
+          >
+            <Scan className="w-5 h-5" />
+            <span>Launch In-Store Cashier</span>
+            <ArrowRight className="w-5 h-5" />
+          </Link>
+          <p className="text-[11px] text-[#6B7A90] mt-2">
+            Already in store on your smartphone? Tap above to start scanning immediately.
+          </p>
+        </div>
+
         {/* Store Standee QR Card (Section 12 & 43) */}
-        <div className="paytm-card p-6 sm:p-8 flex flex-col items-center shadow-[0_2px_12px_rgba(0,46,110,0.08)] mb-8 max-w-sm w-full">
-          <div className="w-48 h-48 bg-white border border-[#E0E6ED] rounded-xl p-3 flex flex-col items-center justify-center shadow-inner mb-4">
+        <div className="paytm-card p-5 sm:p-7 flex flex-col items-center shadow-[0_2px_12px_rgba(0,46,110,0.08)] mb-6 max-w-xs sm:max-w-sm w-full bg-white">
+          <div className="w-36 h-36 sm:w-44 sm:h-44 bg-white border border-[#E0E6ED] rounded-xl p-2.5 flex flex-col items-center justify-center shadow-inner mb-3">
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
                 window.location.origin + '/s/' + store.id + '/checkout'
@@ -66,29 +80,11 @@ export const StoreLandingPage: React.FC = () => {
 
           <div className="flex items-center gap-2 text-xs font-bold text-[#002E6E]">
             <StoreIcon className="w-4 h-4 text-[#00BAF2]" />
-            <span>{store.name} · QR Standee</span>
+            <span>{store.name} · Standee QR</span>
           </div>
-          <p className="text-[11px] text-[#6B7A90] mt-0.5">Scan from phone camera to launch checkout</p>
-        </div>
-
-        {/* Primary Action Buttons (Section 9: Height 48px, Radius 8px) */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md mb-8">
-          <Link
-            to={`/s/${store.id}/checkout`}
-            className="w-full sm:flex-1 h-12 bg-[#00BAF2] hover:bg-[#00a4d6] text-white font-bold text-sm rounded-lg shadow-[0_2px_8px_rgba(0,186,242,0.3)] flex items-center justify-center gap-2 transition active:scale-[0.98]"
-          >
-            <Scan className="w-4 h-4" />
-            <span>Start Self Checkout</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-
-          <Link
-            to="/merchant/dashboard"
-            className="w-full sm:flex-1 h-12 bg-white hover:bg-sky-50 text-[#002E6E] hover:text-[#00BAF2] border border-[#00BAF2] font-bold text-sm rounded-lg flex items-center justify-center gap-2 transition"
-          >
-            <Zap className="w-4 h-4 text-[#00BAF2]" />
-            <span>Merchant Hub</span>
-          </Link>
+          <p className="text-[11px] text-[#6B7A90] mt-0.5 text-center">
+            Scan from phone camera or open on secondary screen to test
+          </p>
         </div>
 
         {/* Barcode Testing Sheet Link for Judges */}

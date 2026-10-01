@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, LayoutDashboard, QrCode, PlusCircle } from 'lucide-react';
+import { ShoppingBag, LayoutDashboard, QrCode, PlusCircle, Menu, X, User, Home } from 'lucide-react';
 import { getStore, subscribeToStoreUpdates } from '../services/db';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
   const isMerchant = location.pathname.startsWith('/merchant');
   const [store, setStore] = useState(getStore());
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToStoreUpdates(() => {
@@ -14,6 +15,11 @@ export const Navbar: React.FC = () => {
     });
     return () => unsub();
   }, []);
+
+  // Close mobile drawer on route navigation
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   // Merchant Header (Section 11: Deep Navy #002E6E)
   if (isMerchant) {
@@ -36,7 +42,7 @@ export const Navbar: React.FC = () => {
                     Merchant
                   </span>
                 </div>
-                <span className="text-[11px] text-blue-200 truncate max-w-[180px] sm:max-w-xs">{store.name}</span>
+                <span className="text-[11px] text-blue-200 truncate max-w-[140px] sm:max-w-xs">{store.name}</span>
               </div>
             </Link>
           </div>
@@ -57,7 +63,7 @@ export const Navbar: React.FC = () => {
               className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold text-white bg-white/10 hover:bg-white/15 transition flex items-center gap-1.5"
             >
               <LayoutDashboard className="w-4 h-4 text-[#00BAF2]" />
-              <span>Dashboard</span>
+              <span className="hidden sm:inline">Dashboard</span>
             </Link>
 
             <Link
@@ -88,27 +94,31 @@ export const Navbar: React.FC = () => {
   // Customer Header (Section 11: White Surface #FFFFFF, Dark Navy Text #002E6E)
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-[#E0E6ED] shadow-[0_1px_4px_rgba(0,46,110,0.06)]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5 group">
+      <div className="max-w-5xl mx-auto px-3.5 sm:px-6 h-16 flex items-center justify-between">
+        {/* Brand & Store Name */}
+        <Link to="/" className="flex items-center gap-2 group min-w-0">
           <img
             src="/finbuddy-icon.png"
             alt="FinBuddy"
-            className="w-9 h-9 object-contain rounded-lg p-0.5 bg-white shadow-xs group-hover:scale-105 transition"
+            className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg p-0.5 bg-white shadow-xs group-hover:scale-105 transition shrink-0"
           />
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-xl tracking-tight text-[#002E6E]">
+              <span className="font-black text-lg sm:text-xl tracking-tight text-[#002E6E]">
                 Fin<span className="text-[#00BAF2]">Buddy</span>
               </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-sky-50 text-[#002E6E] border border-sky-100">
+              <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-sky-50 text-[#002E6E] border border-sky-100 shrink-0">
                 Self-Checkout
               </span>
             </div>
-            <p className="text-[11px] text-[#6B7A90] font-medium">Awadh Mart (Hazratganj)</p>
+            <p className="text-[10px] sm:text-[11px] text-[#6B7A90] font-medium truncate hidden xs:block sm:block">
+              Awadh Mart (Hazratganj)
+            </p>
           </div>
         </Link>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Desktop Nav Items */}
+        <div className="hidden md:flex items-center gap-3">
           <Link
             to="/"
             className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
@@ -132,19 +142,11 @@ export const Navbar: React.FC = () => {
           </Link>
 
           <Link
-            to="/s/store-awadh-01/checkout"
+            to={`/s/${store.id}/checkout`}
             className="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-[#00BAF2] hover:bg-[#00a4d6] text-white shadow-sm flex items-center gap-1.5 transition active:scale-95"
           >
             <ShoppingBag className="w-4 h-4" />
             <span>Scan & Pay</span>
-          </Link>
-
-          <Link
-            to="/merchant/dashboard"
-            className="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-[#002E6E] hover:text-[#00BAF2] bg-[#F5F7FA] hover:bg-[#EBF3FB] border border-[#E0E6ED] flex items-center gap-1.5 transition"
-          >
-            <LayoutDashboard className="w-4 h-4 text-[#002E6E]" />
-            <span className="hidden sm:inline">Merchant Hub</span>
           </Link>
 
           <a
@@ -152,13 +154,95 @@ export const Navbar: React.FC = () => {
             target="_blank"
             rel="noopener noreferrer"
             title="Open printable demo barcode sheet"
-            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#6B7A90] hover:text-[#002E6E] bg-white border border-[#E0E6ED] transition"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#6B7A90] hover:text-[#002E6E] bg-white border border-[#E0E6ED] transition"
           >
             <QrCode className="w-3.5 h-3.5" />
             <span>Barcodes</span>
           </a>
         </div>
+
+        {/* Mobile Nav Action Bar */}
+        <div className="flex md:hidden items-center gap-1.5">
+          <Link
+            to={`/s/${store.id}/checkout`}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#00BAF2] hover:bg-[#00a4d6] text-white shadow-xs flex items-center gap-1.5 transition active:scale-95"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Scan & Pay</span>
+          </Link>
+
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-lg text-[#002E6E] hover:bg-[#F5F7FA] transition active:scale-95 border border-[#E0E6ED]"
+            aria-label="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Slide-down Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-[#E0E6ED] bg-white px-4 py-3 shadow-lg space-y-1 animate-fade-in">
+          <div className="pb-2 mb-2 border-b border-[#F0F3F7]">
+            <span className="text-[10px] uppercase font-bold text-[#6B7A90] tracking-wider block">
+              Active Store
+            </span>
+            <p className="text-xs font-bold text-[#002E6E] truncate">{store.name}</p>
+          </div>
+
+          <Link
+            to="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold transition ${
+              location.pathname === '/'
+                ? 'bg-sky-50 text-[#002E6E] border border-sky-100'
+                : 'text-[#4A5568] hover:bg-[#F5F7FA]'
+            }`}
+          >
+            <Home className="w-4 h-4 text-[#00BAF2]" />
+            <span>Store Check-In / Welcome</span>
+          </Link>
+
+          <Link
+            to="/customer"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold transition ${
+              location.pathname === '/customer'
+                ? 'bg-sky-50 text-[#002E6E] border border-sky-100'
+                : 'text-[#4A5568] hover:bg-[#F5F7FA]'
+            }`}
+          >
+            <User className="w-4 h-4 text-[#00BAF2]" />
+            <span>Customer Hub (Lists & Receipts)</span>
+          </Link>
+
+          <Link
+            to={`/s/${store.id}/checkout`}
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold transition ${
+              location.pathname.includes('/checkout')
+                ? 'bg-sky-50 text-[#002E6E] border border-sky-100'
+                : 'text-[#4A5568] hover:bg-[#F5F7FA]'
+            }`}
+          >
+            <ShoppingBag className="w-4 h-4 text-[#00BAF2]" />
+            <span>In-Store Self-Checkout</span>
+          </Link>
+
+          <a
+            href="/test_barcodes.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold text-[#4A5568] hover:bg-[#F5F7FA] transition"
+          >
+            <QrCode className="w-4 h-4 text-[#00BAF2]" />
+            <span>Demo Barcodes Sheet</span>
+          </a>
+        </div>
+      )}
     </header>
   );
 };
+

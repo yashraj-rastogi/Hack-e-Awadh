@@ -68,6 +68,14 @@ export const CustomerPortalPage: React.FC = () => {
     const user = getCurrentCustomerUser();
     setCustomer(user);
 
+    // Hydrate form fields from existing customer data
+    if (user && !user.isGuest) {
+      if (user.name) setNameInput(user.name);
+      if (user.phone) setPhoneInput(user.phone);
+      if (user.email) setEmailInput(user.email);
+      if (user.address) setAddressInput(user.address);
+    }
+
     const initialTab = searchParams.get('tab');
     if (initialTab === 'orders' || initialTab === 'lists' || initialTab === 'profile') {
       setActiveTab(initialTab);
@@ -201,7 +209,7 @@ export const CustomerPortalPage: React.FC = () => {
     <div className="min-h-screen bg-[#F5F7FA] text-[#1C2D42] flex flex-col">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-4 z-50 bg-[#002E6E] text-white px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg animate-bounce flex items-center gap-2 border border-[#00BAF2]">
+        <div className="fixed top-20 right-4 z-50 bg-[#002E6E] text-white px-4 py-2.5 rounded-lg text-xs font-semibold shadow-lg animate-toast flex items-center gap-2 border border-[#00BAF2]">
           <Sparkles className="w-4 h-4 text-[#00BAF2]" />
           <span>{toastMessage}</span>
         </div>
@@ -260,17 +268,18 @@ export const CustomerPortalPage: React.FC = () => {
         </div>
 
         {/* Tabs Bar */}
-        <div className="max-w-6xl mx-auto flex gap-6 pt-1">
+        <div className="max-w-6xl mx-auto flex gap-3 sm:gap-6 pt-1 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('lists')}
-            className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
+            className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 shrink-0 transition ${
               activeTab === 'lists'
                 ? 'border-[#00BAF2] text-[#002E6E]'
                 : 'border-transparent text-[#6B7A90] hover:text-[#002E6E]'
             }`}
           >
-            <ListPlus className="w-4 h-4 text-[#00BAF2]" />
-            <span>Pre-Build Shopping Lists</span>
+            <ListPlus className="w-4 h-4 text-[#00BAF2] shrink-0" />
+            <span className="hidden sm:inline">Pre-Build Shopping Lists</span>
+            <span className="sm:hidden">Shopping Lists</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-sky-50 text-[#002E6E]">
               {shoppingLists.length}
             </span>
@@ -278,14 +287,15 @@ export const CustomerPortalPage: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('orders')}
-            className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
+            className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 shrink-0 transition ${
               activeTab === 'orders'
                 ? 'border-[#00BAF2] text-[#002E6E]'
                 : 'border-transparent text-[#6B7A90] hover:text-[#002E6E]'
             }`}
           >
-            <Clock className="w-4 h-4 text-[#00BAF2]" />
-            <span>Past Orders & Receipts</span>
+            <Clock className="w-4 h-4 text-[#00BAF2] shrink-0" />
+            <span className="hidden sm:inline">Past Orders & Receipts</span>
+            <span className="sm:hidden">Orders</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-sky-50 text-[#002E6E]">
               {receipts.length}
             </span>
@@ -293,14 +303,15 @@ export const CustomerPortalPage: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('profile')}
-            className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
+            className={`py-3 px-1 border-b-2 text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 shrink-0 transition ${
               activeTab === 'profile'
                 ? 'border-[#00BAF2] text-[#002E6E]'
                 : 'border-transparent text-[#6B7A90] hover:text-[#002E6E]'
             }`}
           >
-            <User className="w-4 h-4 text-[#00BAF2]" />
-            <span>Profile & Zero-Barrier Mode</span>
+            <User className="w-4 h-4 text-[#00BAF2] shrink-0" />
+            <span className="hidden sm:inline">Profile & Zero-Barrier Mode</span>
+            <span className="sm:hidden">Profile</span>
           </button>
         </div>
       </div>
@@ -451,12 +462,12 @@ export const CustomerPortalPage: React.FC = () => {
                     <span className="text-[11px] font-bold text-[#002E6E] block mb-2">
                       Quick Add from Awadh Mart Catalog:
                     </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {catalogProducts.slice(0, 8).map((p) => (
+                    <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                      {catalogProducts.slice(0, 12).map((p) => (
                         <button
                           key={p.id}
                           onClick={() => handleAddItemToList(p)}
-                          className="px-2.5 py-1 rounded-md bg-white hover:bg-sky-50 text-[#002E6E] hover:text-[#00BAF2] border border-[#E0E6ED] text-[11px] font-medium flex items-center gap-1 transition"
+                          className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-sky-50 text-[#002E6E] hover:text-[#00BAF2] border border-[#E0E6ED] text-[11px] font-medium flex items-center gap-1 transition shrink-0 shadow-2xs"
                         >
                           <Plus className="w-3 h-3 text-[#00BAF2]" />
                           <span>{p.name} (₹{(p.pricePaise / 100).toFixed(0)})</span>
@@ -627,10 +638,10 @@ export const CustomerPortalPage: React.FC = () => {
                   <input
                     type="text"
                     required
-                    value={nameInput || customer?.name || ''}
+                    value={nameInput}
                     onChange={(e) => setNameInput(e.target.value)}
                     placeholder="e.g. Rahul Sharma"
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E6ED] rounded-lg text-sm text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
                   />
                 </div>
 
@@ -639,16 +650,16 @@ export const CustomerPortalPage: React.FC = () => {
                     WhatsApp Phone Number (for Digital Receipts)
                   </label>
                   <div className="flex">
-                    <span className="px-3 py-2.5 bg-[#F5F7FA] border border-r-0 border-[#E0E6ED] rounded-l-lg text-xs text-[#6B7A90] font-semibold">
+                    <span className="px-3.5 py-2.5 bg-[#F5F7FA] border border-r-0 border-[#E0E6ED] rounded-l-lg text-sm text-[#6B7A90] font-semibold flex items-center">
                       +91
                     </span>
                     <input
                       type="tel"
                       required
-                      value={phoneInput || customer?.phone || ''}
+                      value={phoneInput}
                       onChange={(e) => setPhoneInput(e.target.value)}
                       placeholder="9876543210"
-                      className="flex-1 px-3.5 py-2.5 bg-white border border-[#E0E6ED] rounded-r-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
+                      className="flex-1 px-3.5 py-2.5 bg-white border border-[#E0E6ED] rounded-r-lg text-sm text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
                     />
                   </div>
                 </div>
@@ -657,10 +668,10 @@ export const CustomerPortalPage: React.FC = () => {
                   <label className="text-xs font-semibold text-[#002E6E] block mb-1">Email (Optional)</label>
                   <input
                     type="email"
-                    value={emailInput || customer?.email || ''}
+                    value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     placeholder="rahul@example.com"
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E6ED] rounded-lg text-sm text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
                   />
                 </div>
 
@@ -668,17 +679,17 @@ export const CustomerPortalPage: React.FC = () => {
                   <label className="text-xs font-semibold text-[#002E6E] block mb-1">Delivery / Home Location</label>
                   <input
                     type="text"
-                    value={addressInput || customer?.address || ''}
+                    value={addressInput}
                     onChange={(e) => setAddressInput(e.target.value)}
                     placeholder="Hazratganj, Lucknow"
-                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
+                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E6ED] rounded-lg text-sm text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
                   />
                 </div>
 
-                <div className="pt-2 flex gap-3">
+                <div className="pt-2 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                   <button
                     type="submit"
-                    className="flex-1 h-11 bg-[#00BAF2] hover:bg-[#00a4d6] text-white text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition active:scale-98"
+                    className="flex-1 h-11 bg-[#00BAF2] hover:bg-[#00a4d6] text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition active:scale-98"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Save Registered Profile</span>
@@ -687,7 +698,7 @@ export const CustomerPortalPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleStartGuest}
-                    className="px-4 h-11 bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] text-xs font-semibold rounded-lg border border-[#E0E6ED] transition"
+                    className="px-4 h-11 bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] text-xs sm:text-sm font-semibold rounded-lg border border-[#E0E6ED] transition"
                   >
                     Switch to Guest
                   </button>

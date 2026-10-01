@@ -37,7 +37,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const [step, setStep] = useState<'confirm' | 'processing' | 'success' | 'failed'>('confirm');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [simulateFailure, setSimulateFailure] = useState(false);
+  const simulateFailure = false;
 
   // WhatsApp Smart Delivery Opt-in
   const [phoneInput, setPhoneInput] = useState(customerPhone || '');
@@ -105,14 +105,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   const handleRetry = () => {
-    setSimulateFailure(false);
     setStep('confirm');
     setErrorMessage(null);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#002E6E]/60 backdrop-blur-xs animate-fade-in">
-      <div className="w-full max-w-md bg-white border border-[#E0E6ED] rounded-2xl shadow-[0_8px_30px_rgba(0,46,110,0.18)] p-6 relative flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 bg-[#002E6E]/60 backdrop-blur-xs animate-fade-in">
+      <div className="w-full max-w-md bg-white border border-[#E0E6ED] rounded-2xl shadow-[0_8px_30px_rgba(0,46,110,0.18)] p-5 sm:p-6 relative flex flex-col max-h-[92vh] overflow-y-auto">
         {step !== 'processing' && (
           <button
             onClick={onClose}
@@ -198,22 +197,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     placeholder="Enter phone for instant WhatsApp bill"
                     value={phoneInput}
                     onChange={(e) => setPhoneInput(e.target.value)}
-                    className="flex-1 px-3 py-1.5 bg-white border border-[#E0E6ED] rounded-lg text-xs text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
+                    className="flex-1 px-3 py-2 bg-white border border-[#E0E6ED] rounded-lg text-sm text-[#1C2D42] focus:outline-none focus:border-[#00BAF2]"
                   />
                 </div>
               )}
             </div>
 
-            {/* QA Test Simulation Checkbox */}
-            <div className="p-2.5 rounded-lg bg-[#F5F7FA] border border-[#E0E6ED] mb-4 flex items-center justify-between">
-              <span className="text-[11px] font-medium text-[#6B7A90]">Simulate payment decline (QA test)</span>
-              <input
-                type="checkbox"
-                checked={simulateFailure}
-                onChange={(e) => setSimulateFailure(e.target.checked)}
-                className="w-4 h-4 rounded text-[#00BAF2] focus:ring-0 cursor-pointer"
-              />
-            </div>
+
 
             {/* Primary Action Button */}
             <button

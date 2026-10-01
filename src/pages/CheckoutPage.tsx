@@ -37,12 +37,26 @@ export const CheckoutPage: React.FC = () => {
   const products = getProducts(storeId);
 
   const [customer, setCustomer] = useState<CustomerUser | null>(getCurrentCustomerUser());
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    try {
+      const saved = sessionStorage.getItem(`finbuddy_cart_${storeId}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [scannerActive] = useState<boolean>(true);
   const [pickerOpen, setPickerOpen] = useState<boolean>(false);
   const [voiceOpen, setVoiceOpen] = useState<boolean>(false);
   const [paymentOpen, setPaymentOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<'scan' | 'cart'>('scan');
+  const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
+
+  // Persist cart to sessionStorage so page refresh doesn't lose items
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(`finbuddy_cart_${storeId}`, JSON.stringify(cartItems));
+    } catch { /* storage full, ignore */ }
+  }, [cartItems, storeId]);
 
   // Quick Shopping List Drawer
   const [showListDrawer, setShowListDrawer] = useState<boolean>(false);
@@ -92,6 +106,7 @@ export const CheckoutPage: React.FC = () => {
   };
 
   const addItemToCart = (product: Product, quantity: number = 1) => {
+    setLastAddedProduct(product);
     setCartItems((prev) => {
       const existing = prev.find((item) => item.productId === product.id);
       if (existing) {
@@ -249,180 +264,327 @@ export const CheckoutPage: React.FC = () => {
       </div>
 
       {/* Main Workspace */}
-      <div className="max-w-4xl mx-auto px-4 py-6 w-full grid grid-cols-1 md:grid-cols-12 gap-6 flex-1">
-        {/* Left Column: Barcode Scanner & Voice Prompt */}
-        <div className="md:col-span-6 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#002E6E] uppercase tracking-wider flex items-center gap-1.5">
-              <Camera className="w-3.5 h-3.5 text-[#00BAF2]" />
-              <span>Barcode Scanner</span>
-            </span>
-            <a
-              href="/test_barcodes.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] font-semibold text-[#00BAF2] hover:underline flex items-center gap-1"
-            >
-              <span>Barcodes Sheet</span>
-              <QrCode className="w-3 h-3" />
-            </a>
-          </div>
-
-          {/* Active Camera Viewport */}
-          <CameraScanner onScan={handleBarcodeScan} active={scannerActive} />
-
-          {/* Voice Prompt Action Card */}
-          <div
-            onClick={() => setVoiceOpen(true)}
-            className="p-3.5 rounded-xl bg-white border border-[#E0E6ED] hover:border-[#00BAF2] flex items-center justify-between cursor-pointer transition shadow-sm group"
+      <div className="max-w-4xl mx-auto px-3.5 sm:px-4 py-4 sm:py-6 w-full flex-1">
+        {/* Mobile View Switcher (Segmented Tab Bar) */}
+        <div className="md:hidden flex bg-[#EAEFF5] p-1 rounded-xl mb-4 shadow-inner">
+          <button
+            type="button"
+            onClick={() => setMobileTab('scan')}
+            className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+              mobileTab === 'scan'
+                ? 'bg-white text-[#002E6E] shadow-sm'
+                : 'text-[#6B7A90] hover:text-[#002E6E]'
+            }`}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-sky-50 text-[#00BAF2] flex items-center justify-center group-hover:bg-[#00BAF2] group-hover:text-white transition">
-                <Mic className="w-4 h-4" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-[#002E6E]">Voice Assistant (Hindi / Hinglish / English)</p>
-                <p className="text-[11px] text-[#6B7A90]">Say: "Do aur Pepsi add kar do" or ask stock</p>
-              </div>
-            </div>
-            <span className="text-xs font-bold text-[#00BAF2] group-hover:translate-x-0.5 transition flex items-center gap-1">
-              <span>Speak</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </span>
-          </div>
+            <Camera className="w-4 h-4 text-[#00BAF2]" />
+            <span>Scan & Voice</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('cart')}
+            className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition relative ${
+              mobileTab === 'cart'
+                ? 'bg-white text-[#002E6E] shadow-sm'
+                : 'text-[#6B7A90] hover:text-[#002E6E]'
+            }`}
+          >
+            <ShoppingCart className="w-4 h-4 text-[#00BAF2]" />
+            <span>Cart</span>
+            {totalItemCount > 0 ? (
+              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-black bg-[#21C17A] text-white">
+                {totalItemCount} · ₹{totalRupees}
+              </span>
+            ) : (
+              <span className="text-[10px] text-[#6B7A90]">(0)</span>
+            )}
+          </button>
         </div>
 
-        {/* Right Column: Cart Experience */}
-        <div className="md:col-span-6 flex flex-col">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-[#002E6E] uppercase tracking-wider flex items-center gap-1.5">
-              <ShoppingCart className="w-3.5 h-3.5 text-[#00BAF2]" />
-              <span>Current Cart ({totalItemCount})</span>
-            </span>
-            {cartItems.length > 0 && (
-              <button
-                onClick={() => setCartItems([])}
-                className="text-[11px] font-semibold text-[#FD5C63] hover:underline transition"
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full">
+          {/* Left Column: Barcode Scanner & Voice Prompt */}
+          <div
+            className={`md:col-span-6 flex flex-col gap-4 ${
+              mobileTab === 'scan' ? 'flex' : 'hidden md:flex'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#002E6E] uppercase tracking-wider flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5 text-[#00BAF2]" />
+                <span>Barcode Scanner</span>
+              </span>
+              <a
+                href="/test_barcodes.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-semibold text-[#00BAF2] hover:underline flex items-center gap-1"
               >
-                Clear All
-              </button>
-            )}
-          </div>
+                <span>Barcodes Sheet</span>
+                <QrCode className="w-3 h-3" />
+              </a>
+            </div>
 
-          {/* Cart Card */}
-          <div className="flex-1 bg-white border border-[#E0E6ED] rounded-xl p-4 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,46,110,0.06)] min-h-[340px]">
-            {cartItems.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-[#6B7A90]">
-                <div className="w-12 h-12 rounded-full bg-[#F5F7FA] border border-[#E0E6ED] flex items-center justify-center text-[#002E6E] mb-3">
-                  <ShoppingCart className="w-6 h-6 opacity-60" />
+            {/* Active Camera Viewport */}
+            <CameraScanner onScan={handleBarcodeScan} active={scannerActive} />
+
+            {/* Instant Scanned Item Quick Pill (Mobile UX) */}
+            {lastAddedProduct && cartItems.some((i) => i.productId === lastAddedProduct.id) && (
+              <div className="p-3 bg-white border border-[#21C17A]/40 rounded-xl flex items-center justify-between shadow-xs animate-toast">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#21C17A] flex items-center justify-center shrink-0 border border-emerald-100">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-[#002E6E] truncate">Added: {lastAddedProduct.name}</p>
+                    <p className="text-[11px] text-[#6B7A90]">
+                      ₹{(lastAddedProduct.pricePaise / 100).toFixed(2)} · Cart has {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}
+                    </p>
+                  </div>
                 </div>
-                <h4 className="text-sm font-bold text-[#002E6E] mb-1">Your cart is empty</h4>
-                <p className="text-xs text-[#6B7A90] max-w-xs mb-4">
-                  Scan a product barcode or tap search below to add items.
-                </p>
                 <button
-                  onClick={() => setPickerOpen(true)}
-                  className="px-4 py-2 rounded-lg bg-white hover:bg-sky-50 text-[#00BAF2] border border-[#00BAF2] text-xs font-semibold transition"
+                  type="button"
+                  onClick={() => setMobileTab('cart')}
+                  className="text-xs font-bold text-[#00BAF2] hover:underline shrink-0 flex items-center gap-0.5 ml-2"
                 >
-                  Search Store Catalog
+                  <span className="md:hidden">View Cart</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-            ) : (
-              <div className="space-y-3 overflow-y-auto max-h-[360px] pr-1">
-                {cartItems.map((item) => {
-                  const lineTotal = ((item.unitPricePaise * item.quantity) / 100).toFixed(2);
-                  const unitPrice = (item.unitPricePaise / 100).toFixed(2);
-
-                  return (
-                    <div
-                      key={item.productId}
-                      className="bg-[#F9FBFE] border border-[#E0E6ED] rounded-lg p-3 flex items-center justify-between gap-3"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-bold text-[#002E6E] truncate">{item.name}</h4>
-                        <p className="text-[11px] text-[#6B7A90]">
-                          ₹{unitPrice} each · {item.category}
-                        </p>
-                      </div>
-
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-1.5 bg-white border border-[#E0E6ED] rounded-md p-1 shadow-sm">
-                        <button
-                          onClick={() => updateQuantity(item.productId, -1)}
-                          className="w-6 h-6 rounded bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] flex items-center justify-center transition active:scale-95"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-6 text-center text-xs font-bold text-[#002E6E]">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(item.productId, 1)}
-                          className="w-6 h-6 rounded bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] flex items-center justify-center transition active:scale-95"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-
-                      {/* Line Total & Remove */}
-                      <div className="text-right min-w-[60px]">
-                        <p className="text-sm font-extrabold text-[#002E6E]">₹{lineTotal}</p>
-                        <button
-                          onClick={() => removeItem(item.productId)}
-                          className="text-[10px] text-[#6B7A90] hover:text-[#FD5C63] transition"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             )}
 
-            {/* Cart Bottom Summary & Payment Action */}
-            {cartItems.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-[#E0E6ED]">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-xs text-[#6B7A90] block">Total Amount</span>
-                    <p className="text-3xl font-black text-[#002E6E]">₹{totalRupees}</p>
-                  </div>
-
-                  <button
-                    onClick={() => setPaymentOpen(true)}
-                    className="h-12 px-6 bg-[#00BAF2] hover:bg-[#00a4d6] text-white font-bold text-sm rounded-lg shadow-[0_2px_8px_rgba(0,186,242,0.3)] flex items-center gap-2 transition active:scale-[0.98]"
-                  >
-                    <span>Generate Payment</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+            {/* Voice Prompt Action Card */}
+            <div
+              onClick={() => setVoiceOpen(true)}
+              className="p-3.5 rounded-xl bg-white border border-[#E0E6ED] hover:border-[#00BAF2] flex items-center justify-between cursor-pointer transition shadow-sm group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-sky-50 text-[#00BAF2] flex items-center justify-center group-hover:bg-[#00BAF2] group-hover:text-white transition shrink-0">
+                  <Mic className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-bold text-[#002E6E]">Voice Assistant (Hindi / Hinglish / English)</p>
+                  <p className="text-[11px] text-[#6B7A90]">Say: "Do aur Pepsi add kar do" or ask stock</p>
                 </div>
               </div>
-            )}
+              <span className="text-xs font-bold text-[#00BAF2] group-hover:translate-x-0.5 transition flex items-center gap-1 shrink-0">
+                <span>Speak</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+
+            {/* Mobile Catalog Search Quick Button */}
+            <div className="md:hidden flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-sky-50 text-[#002E6E] text-xs font-bold border border-[#E0E6ED] flex items-center justify-center gap-1.5 shadow-xs transition"
+              >
+                <Search className="w-3.5 h-3.5 text-[#00BAF2]" />
+                <span>Search Store Catalog</span>
+              </button>
+              {cartItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('cart')}
+                  className="py-2.5 px-4 rounded-xl bg-[#002E6E] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 text-[#00BAF2]" />
+                  <span>Cart ({totalItemCount})</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Cart Experience */}
+          <div
+            className={`md:col-span-6 flex flex-col ${
+              mobileTab === 'cart' ? 'flex' : 'hidden md:flex'
+            }`}
+          >
+            {/* Mobile Return to Scanner shortcut */}
+            <div className="md:hidden flex items-center justify-between mb-2 pb-2 border-b border-[#E0E6ED]">
+              <button
+                type="button"
+                onClick={() => setMobileTab('scan')}
+                className="flex items-center gap-1.5 text-xs font-bold text-[#00BAF2] hover:underline"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>← Back to Scanner</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="text-xs font-semibold text-[#002E6E] hover:text-[#00BAF2] flex items-center gap-1"
+              >
+                <Search className="w-3 h-3 text-[#00BAF2]" />
+                <span>Add More</span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-[#002E6E] uppercase tracking-wider flex items-center gap-1.5">
+                <ShoppingCart className="w-3.5 h-3.5 text-[#00BAF2]" />
+                <span>Current Cart ({totalItemCount})</span>
+              </span>
+              {cartItems.length > 0 && (
+                <button
+                  onClick={() => setCartItems([])}
+                  className="text-[11px] font-semibold text-[#FD5C63] hover:underline transition"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            {/* Cart Card */}
+            <div className="flex-1 bg-white border border-[#E0E6ED] rounded-xl p-4 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,46,110,0.06)] min-h-[340px]">
+              {cartItems.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-[#6B7A90]">
+                  <div className="w-12 h-12 rounded-full bg-[#F5F7FA] border border-[#E0E6ED] flex items-center justify-center text-[#002E6E] mb-3">
+                    <ShoppingCart className="w-6 h-6 opacity-60" />
+                  </div>
+                  <h4 className="text-sm font-bold text-[#002E6E] mb-1">Your cart is empty</h4>
+                  <p className="text-xs text-[#6B7A90] max-w-xs mb-4">
+                    Scan a product barcode or tap search below to add items.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs justify-center">
+                    <button
+                      onClick={() => setMobileTab('scan')}
+                      className="px-4 py-2 rounded-lg bg-[#00BAF2] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Open Scanner</span>
+                    </button>
+                    <button
+                      onClick={() => setPickerOpen(true)}
+                      className="px-4 py-2 rounded-lg bg-white hover:bg-sky-50 text-[#00BAF2] border border-[#00BAF2] text-xs font-semibold transition"
+                    >
+                      Search Catalog
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 overflow-y-auto max-h-[360px] pr-1">
+                  {cartItems.map((item) => {
+                    const lineTotal = ((item.unitPricePaise * item.quantity) / 100).toFixed(2);
+                    const unitPrice = (item.unitPricePaise / 100).toFixed(2);
+
+                    return (
+                      <div
+                        key={item.productId}
+                        className="bg-[#F9FBFE] border border-[#E0E6ED] rounded-lg p-3 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-[#002E6E] truncate">{item.name}</h4>
+                          <p className="text-[11px] text-[#6B7A90]">
+                            ₹{unitPrice} each · {item.category}
+                          </p>
+                        </div>
+
+                        {/* Quantity Controls */}
+                        <div className="flex items-center gap-1.5 bg-white border border-[#E0E6ED] rounded-md p-1 shadow-sm shrink-0">
+                          <button
+                            onClick={() => updateQuantity(item.productId, -1)}
+                            className="w-7 h-7 rounded bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] flex items-center justify-center transition active:scale-95"
+                            aria-label="Decrease quantity"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center text-xs font-bold text-[#002E6E]">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(item.productId, 1)}
+                            className="w-7 h-7 rounded bg-[#F5F7FA] hover:bg-[#EBF3FB] text-[#002E6E] flex items-center justify-center transition active:scale-95"
+                            aria-label="Increase quantity"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Line Total & Remove */}
+                        <div className="text-right min-w-[55px] shrink-0">
+                          <p className="text-sm font-extrabold text-[#002E6E]">₹{lineTotal}</p>
+                          <button
+                            onClick={() => removeItem(item.productId)}
+                            className="text-[10px] text-[#6B7A90] hover:text-[#FD5C63] transition"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Cart Bottom Summary & Payment Action */}
+              {cartItems.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-[#E0E6ED]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <span className="text-xs text-[#6B7A90] block">Total Amount</span>
+                      <p className="text-2xl sm:text-3xl font-black text-[#002E6E]">₹{totalRupees}</p>
+                    </div>
+
+                    <button
+                      onClick={() => setPaymentOpen(true)}
+                      className="h-12 px-5 sm:px-6 bg-[#00BAF2] hover:bg-[#00a4d6] text-white font-bold text-xs sm:text-sm rounded-lg shadow-[0_2px_8px_rgba(0,186,242,0.3)] flex items-center gap-2 transition active:scale-[0.98]"
+                    >
+                      <span>Generate Payment</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Floating Bottom Bar on Mobile when items exist */}
       {cartItems.length > 0 && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E0E6ED] p-4 shadow-[0_-2px_10px_rgba(0,46,110,0.08)]">
-          <div className="flex items-center justify-between max-w-md mx-auto">
-            <div>
-              <span className="text-[11px] text-[#6B7A90]">
-                {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}
-              </span>
-              <p className="text-2xl font-black text-[#002E6E]">₹{totalRupees}</p>
-            </div>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E0E6ED] p-3 px-4 shadow-[0_-4px_16px_rgba(0,46,110,0.12)]">
+          <div className="flex items-center justify-between max-w-md mx-auto gap-3">
             <button
-              onClick={() => setPaymentOpen(true)}
-              className="h-11 px-6 bg-[#00BAF2] hover:bg-[#00a4d6] text-white font-bold text-sm rounded-lg shadow-md flex items-center gap-1.5 active:scale-95 transition"
+              type="button"
+              onClick={() => setMobileTab(mobileTab === 'scan' ? 'cart' : 'scan')}
+              className="flex flex-col text-left active:opacity-75 transition min-w-0"
             >
-              <span>Pay Now</span>
-              <ArrowRight className="w-4 h-4" />
+              <div className="flex items-center gap-1.5">
+                <ShoppingCart className="w-3.5 h-3.5 text-[#00BAF2] shrink-0" />
+                <span className="text-[11px] font-bold text-[#002E6E] truncate">
+                  {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}
+                </span>
+                <span className="text-[10px] text-[#00BAF2] font-semibold underline shrink-0">
+                  {mobileTab === 'scan' ? 'View Cart' : 'Scanner'}
+                </span>
+              </div>
+              <p className="text-xl font-black text-[#002E6E]">₹{totalRupees}</p>
             </button>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {mobileTab === 'scan' && (
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('cart')}
+                  className="h-11 px-3 bg-[#F5F7FA] hover:bg-sky-50 text-[#002E6E] font-bold text-xs rounded-lg border border-[#E0E6ED] transition"
+                >
+                  Review
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPaymentOpen(true)}
+                className="h-11 px-5 bg-[#00BAF2] hover:bg-[#00a4d6] text-white font-bold text-xs sm:text-sm rounded-lg shadow-md flex items-center gap-1.5 active:scale-95 transition"
+              >
+                <span>Pay ₹{totalRupees}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
+
 
       {/* Quick Shopping List Drawer Modal */}
       {showListDrawer && (
@@ -506,7 +668,7 @@ export const CheckoutPage: React.FC = () => {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#002E6E] text-white text-xs font-semibold shadow-xl flex items-center gap-2 animate-bounce">
+        <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#002E6E] text-white text-xs font-semibold shadow-xl flex items-center gap-2 animate-toast">
           <Check className="w-4 h-4 text-[#21C17A]" />
           <span>{toastMessage}</span>
         </div>

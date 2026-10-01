@@ -184,8 +184,8 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#002E6E]/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md bg-white border border-[#E0E6ED] rounded-2xl shadow-[0_8px_30px_rgba(0,46,110,0.18)] p-6 relative flex flex-col items-center text-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 bg-[#002E6E]/60 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md bg-white border border-[#E0E6ED] rounded-2xl shadow-[0_8px_30px_rgba(0,46,110,0.18)] p-5 sm:p-6 relative flex flex-col items-center text-center max-h-[92vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
